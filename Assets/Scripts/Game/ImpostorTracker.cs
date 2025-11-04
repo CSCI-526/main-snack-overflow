@@ -67,34 +67,36 @@ public class ImpostorTracker : MonoBehaviour
     }
 
    System.Collections.IEnumerator WinAfterBeam()
-{
-    yield return new WaitForSecondsRealtime(winDelayAfterLastHit);
-
-    var timer = FindObjectOfType<TimerController>(true);
-    if (timer) timer.StopTimer();
-
-    if (pauseOnWin) Time.timeScale = 0f;
-
-    if (disableClicksOnWin)
     {
-        var click = FindObjectOfType<ClickToSmite>(true);
-        if (click) click.enabled = false;
-    }
+        yield return new WaitForSecondsRealtime(winDelayAfterLastHit);
 
-    if (winPanel)
-    {
-        winPanel.SetActive(true);
+        var timer = FindObjectOfType<TimerController>(true);
+        if (timer) timer.StopTimer();
 
-        if (timer)
+        if (pauseOnWin) Time.timeScale = 0f;
+
+        if (disableClicksOnWin)
         {
-            timer.PreparePanelForClicks(winPanel);
-            timer.WireButtonToRetry(winPanel, "Exit");
-            timer.SetTopLeftButtonsVisible(false);   
+            var click = FindObjectOfType<ClickToSmite>(true);
+            if (click) click.enabled = false;
         }
-    }
 
-     if (AnalyticsManager.I != null)
-        AnalyticsManager.I.EndAttemptSuccess();
+        if (winPanel)
+        {
+            winPanel.SetActive(true);
+
+            if (timer)
+            {
+                timer.PreparePanelForClicks(winPanel);
+                timer.WireButtonToRetry(winPanel, "Exit");
+                timer.SetTopLeftButtonsVisible(false);   
+            }
+        }
+
+        if (AnalyticsManager.I != null)
+            AnalyticsManager.I.EndAttemptSuccess();
+
+        ProgressManager.SetLevel1Complete();
 
     }
 

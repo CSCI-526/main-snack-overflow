@@ -290,22 +290,27 @@ public class InstructionsManager : MonoBehaviour
     public TimerController timerController;
     public GameObject[] enableOnGameplay;
 
+    [Header("Auto Start")]
+    public bool autoStart = true;
+    [Range(0.5f, 6f)] public float autoStartDelay = 4.0f;
+
     void Start()
     {
         // Pause gameplay while instructions are up
         Time.timeScale = 0f;
 
-        startButton.gameObject.SetActive(false);
-        if (skipButton) skipButton.gameObject.SetActive(true);
+        instructionsPanel.SetActive(true);
 
-        startButton.onClick.AddListener(OnStartClicked);
-        if (skipButton) skipButton.onClick.AddListener(SkipIntro);
+        // Hide buttons (no click flow)
+        if (startButton) startButton.gameObject.SetActive(false);
+        if (skipButton)  skipButton.gameObject.SetActive(false);
 
+        // Subscribe to memory complete (so timer/spawn happen once)
         if (memoryBar != null)
             memoryBar.OnMemoryPhaseComplete += HandleMemoryComplete;
 
-        // Panel is shown by calling StartInstructions() from your flow
-        instructionsPanel.SetActive(false);
+        // Auto-advance after delay
+        if (autoStart) StartCoroutine(AutoStartAfterDelay());
     }
 
     void OnDestroy()
@@ -386,6 +391,20 @@ public class InstructionsManager : MonoBehaviour
                 if (go) go.SetActive(true);
         }
     }
+
+    IEnumerator AutoStartAfterDelay()
+    {
+        // Ensure the single-line is visible the whole time
+        // (Set your one-line text in the Inspector on instructionsText)
+        yield return new WaitForSecondsRealtime(autoStartDelay);
+
+        // Hide intro panel and start Memory phase (THIS replaces the Start button)
+        instructionsPanel.SetActive(false);
+
+        if (memoryBar != null)
+            memoryBar.BeginMemoryPhase();
+    }
+
 }
 
 

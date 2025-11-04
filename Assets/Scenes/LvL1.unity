@@ -4283,7 +4283,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -410}
+  m_AnchoredPosition: {x: 0, y: -128}
   m_SizeDelta: {x: 200, y: 75}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &87574499
@@ -7302,7 +7302,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &168382447
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7323,7 +7323,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Who's the Imposter?
+  m_text: Blindspot
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -11490,18 +11490,15 @@ MonoBehaviour:
   instructionsPanel: {fileID: 359235076}
   startButton: {fileID: 87574499}
   skipButton: {fileID: 1568866783}
-  fullText: "Memorize the shapes and colors.\n\n\u2022 The color represents the impostor\u2019s
-    color.  \n\u2022 The shape represents the impostor\u2019s movement path.  \n\nFind
-    and eliminate impostors that match both color and shape.  \nClick on a character
-    to catch them \u2014 but be careful!  \nIf you hit a civilian instead, you\u2019ll
-    lose one beam.  \n\nYou only have 3 beams to catch all impostors!  \n\nControls:
-    WASD / Arrow Keys & Mouse Click\n"
+  fullText: Find 10 reds before the timer ends!
   typingSpeed: 0.02
   memoryBar: {fileID: 82438973}
   timerController: {fileID: 1472231006}
   enableOnGameplay:
   - {fileID: 152959127}
   - {fileID: 914836417}
+  autoStart: 1
+  autoStartDelay: 2.5
 --- !u!4 &240446939
 Transform:
   m_ObjectHideFlags: 0
@@ -14069,7 +14066,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &292145152
 RectTransform:
   m_ObjectHideFlags: 0
@@ -23835,9 +23832,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 563072211}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 50, y: -30}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -603, y: 33}
   m_SizeDelta: {x: 1200, y: 50}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &478860911
@@ -23860,12 +23857,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Memorize the shapes and colors.\n\n\u2022 The color represents the impostor\u2019s
-    color.  \n\u2022 The shape represents the impostor\u2019s movement path.  \n\nFind
-    and eliminate impostors that match both color and shape.  \nClick on a character
-    to catch them \u2014 but be careful!  \nIf you hit a civilian instead, you\u2019ll
-    lose one beam.  \n\nYou only have 3 beams to catch all impostors!  \n\nControls:
-    WASD / Arrow Keys & Mouse Click\n"
+  m_text: Find 10 reds before the timer ends!
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -23892,14 +23884,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 50
+  m_fontSizeBase: 50
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -28447,7 +28439,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 1500, y: 1000}
+  m_SizeDelta: {x: 1000, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &563072212
 MonoBehaviour:
@@ -45432,7 +45424,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &894297049
 RectTransform:
   m_ObjectHideFlags: 0
@@ -59365,55 +59357,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1189347519}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1193292835
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1193292837}
-  - component: {fileID: 1193292836}
-  m_Layer: 0
-  m_Name: TitleManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1193292836
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193292835}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9dcec59134cd9d4409326d0fee730ec3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  titleText: {fileID: 168382447}
-  instructionsPanel: {fileID: 359235076}
-  instructionsManager: {fileID: 240446938}
-  slideSpeed: 300
-  pauseDuration: 2
---- !u!4 &1193292837
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193292835}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 715.8851, y: 533.9636, z: -6.4405513}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1194253228
 GameObject:
   m_ObjectHideFlags: 0
@@ -83698,7 +83641,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1684447629
 RectTransform:
   m_ObjectHideFlags: 0
@@ -105422,6 +105365,5 @@ SceneRoots:
   - {fileID: 240446939}
   - {fileID: 303854490}
   - {fileID: 1672995373}
-  - {fileID: 1193292837}
   - {fileID: 230281258}
   - {fileID: 1298239734}
