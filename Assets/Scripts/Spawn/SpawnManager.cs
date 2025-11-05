@@ -331,8 +331,11 @@
 // }
 
 
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using Random = UnityEngine.Random;
 
 public class SpawnManager : MonoBehaviour
 {
@@ -355,6 +358,13 @@ public class SpawnManager : MonoBehaviour
     [Header("Parents")]
     public Transform npcsParent;
     public Transform playerParent;
+
+    const string LevelOneSceneName = "LvL1";
+    static readonly string[] LevelOneWarmColorKeywords = { "raspberry", "carmine", "tomato" };
+
+    int[] levelOneCivilianColorIdsCache;
+    int levelOneImpostorColorIdCache = -2;
+
     readonly List<Vector3> usedSpawnPositions = new List<Vector3>();
 
     const float minimumSpawnSpacing = 3.5f;     // was 1.1f
@@ -373,6 +383,8 @@ public class SpawnManager : MonoBehaviour
     // -----------------------------
     public void StartSpawning()
     {
+        levelOneCivilianColorIdsCache = null;
+        levelOneImpostorColorIdCache = -2;
         usedSpawnPositions.Clear();
         SpawnPlayer();
         SpawnCivilians();
@@ -388,62 +400,67 @@ public class SpawnManager : MonoBehaviour
     }
 
     void SpawnCivilians()
-{
-    for (int i = 0; i < civilianCount; i++)
     {
-        // Pick random spawn position within movement bounds
-        Vector3 pos = GetRandomPointInMovementBounds();
+        for (int i = 0; i < civilianCount; i++)
+        {
+            // Pick random spawn position within movement bounds
+            Vector3 pos = GetRandomPointInMovementBounds();
 
-        // Instantiate NPC
-        var npc = Instantiate(npcPrefab, pos, Quaternion.identity, npcsParent);
+            // Instantiate NPC
+            var npc = Instantiate(npcPrefab, pos, Quaternion.identity, npcsParent);
 
-        // Random shape and color
-        PathShape.ShapeType shapeType = (PathShape.ShapeType)Random.Range(0, 4);
-        int colorId = Random.Range(0, palette ? palette.Count : 1);
+            // Random shape and color
+            PathShape.ShapeType shapeType = (PathShape.ShapeType)Random.Range(0, 4);
+            int colorId = PickCivilianColor();
 
-        // Create a unique path at the NPC’s spawn location
-        var path = CreateRuntimePath(shapeType, pos);
+            // Create a unique path at the NPC’s spawn location
+            var path = CreateRuntimePath(shapeType, pos);
 
-        // Assign PathFollower to follow this path
-        var follower = npc.AddComponent<PathFollower>();
-        follower.pathShape = path;
+            // Assign PathFollower to follow this path
+            var follower = npc.AddComponent<PathFollower>();
+            follower.pathShape = path;
 
-        // Apply civilian identity (false = not impostor)
-        ApplyNPCIdentity(npc, false, shapeType, colorId);
+            // Apply civilian identity (false = not impostor)
+            ApplyNPCIdentity(npc, false, shapeType, colorId);
+        }
     }
-}
 
     void SpawnImpostors()
-{
-    if (GameRoundState.Instance == null || GameRoundState.Instance.allowedPairs == null)
-        return;
-
-    var pairs = GameRoundState.Instance.allowedPairs;
-    if (pairs.Length == 0) return;
-
-    for (int i = 0; i < impostorCount; i++)
     {
-        // Randomly pick one allowed impostor pair (shape + color)
-        var pair = pairs[Random.Range(0, pairs.Length)];
+        if (GameRoundState.Instance == null || GameRoundState.Instance.allowedPairs == null)
+            return;
 
-        // Spawn randomly within the movement bounds (using your fixed GetRandomPointInMovementBounds)
-        Vector3 pos = GetRandomPointInMovementBounds();
+        var pairs = GameRoundState.Instance.allowedPairs;
+        if (pairs.Length == 0) return;
+
+        bool isLevelOne = IsLevelOneScene();
+        int impostorsToSpawn = isLevelOne ? 10 : impostorCount;
+        int impostorColorId = isLevelOne ? DetermineLevelOneImpostorColorId() : -1;
+
+        for (int i = 0; i < impostorsToSpawn; i++)
+        {
+            // Randomly pick one allowed impostor pair (shape + color)
+            var pair = pairs[Random.Range(0, pairs.Length)];
+
+            // Spawn randomly within the movement bounds (using your fixed GetRandomPointInMovementBounds)
+            Vector3 pos = GetRandomPointInMovementBounds();
 
             // Create the impostor NPC at that position
             var npc = Instantiate(npcPrefab, pos, Quaternion.identity, npcsParent);
-        ImpostorTracker.Instance?.RegisterImpostor();
+            ImpostorTracker.Instance?.RegisterImpostor();
 
-        // Assign impostor identity (true = impostor)
-        ApplyNPCIdentity(npc, true, pair.shape, pair.colorId);
+            // Assign impostor identity (true = impostor)
+            int appliedColor = isLevelOne && impostorColorId >= 0 ? impostorColorId : pair.colorId;
+            ApplyNPCIdentity(npc, true, pair.shape, appliedColor);
 
-        // Create a unique runtime path for this impostor
-        var path = CreateRuntimePath(pair.shape, pos);
+            // Create a unique runtime path for this impostor
+            var path = CreateRuntimePath(pair.shape, pos);
 
-        // Make impostor follow its unique path
-        var follower = npc.AddComponent<PathFollower>();
-        follower.pathShape = path;
+            // Make impostor follow its unique path
+            var follower = npc.AddComponent<PathFollower>();
+            follower.pathShape = path;
+        }
     }
-}
 
 
     void ApplyNPCIdentity(GameObject npc, bool isImpostor, PathShape.ShapeType shapeType, int colorId)
@@ -456,6 +473,95 @@ public class SpawnManager : MonoBehaviour
 
         var rends = npc.GetComponentsInChildren<Renderer>();
         id.ApplyColor(palette, rends);
+    }
+
+    int PickCivilianColor()
+    {
+        if (!palette || palette.Count == 0)
+            return 0;
+
+        if (!IsLevelOneScene())
+            return Random.Range(0, palette.Count);
+
+        var warmColors = GetLevelOneCivilianColorIds();
+        if (warmColors.Length == 0)
+            return Random.Range(0, palette.Count);
+
+        return warmColors[Random.Range(0, warmColors.Length)];
+    }
+
+    int DetermineLevelOneImpostorColorId()
+    {
+        if (levelOneImpostorColorIdCache != -2)
+            return levelOneImpostorColorIdCache;
+
+        if (!palette || palette.Count == 0)
+        {
+            levelOneImpostorColorIdCache = -1;
+            return levelOneImpostorColorIdCache;
+        }
+
+        for (int i = 0; i < palette.Count; i++)
+        {
+            if (NameMatchesKeyword(palette.GetName(i), "red"))
+            {
+                levelOneImpostorColorIdCache = i;
+                return levelOneImpostorColorIdCache;
+            }
+        }
+
+        levelOneImpostorColorIdCache = 0;
+        return levelOneImpostorColorIdCache;
+    }
+
+    int[] GetLevelOneCivilianColorIds()
+    {
+        if (levelOneCivilianColorIdsCache != null)
+            return levelOneCivilianColorIdsCache;
+
+        if (!palette || palette.Count == 0)
+        {
+            levelOneCivilianColorIdsCache = Array.Empty<int>();
+            return levelOneCivilianColorIdsCache;
+        }
+
+        var matches = new List<int>();
+        for (int i = 0; i < palette.Count; i++)
+        {
+            string name = palette.GetName(i);
+            if (NameMatchesAnyKeyword(name, LevelOneWarmColorKeywords))
+                matches.Add(i);
+        }
+
+        levelOneCivilianColorIdsCache = matches.ToArray();
+        return levelOneCivilianColorIdsCache;
+    }
+
+    bool IsLevelOneScene()
+    {
+        var scene = SceneManager.GetActiveScene();
+        return scene.IsValid() && scene.name == LevelOneSceneName;
+    }
+
+    static bool NameMatchesAnyKeyword(string name, string[] keywords)
+    {
+        if (string.IsNullOrEmpty(name) || keywords == null || keywords.Length == 0)
+            return false;
+
+        foreach (var keyword in keywords)
+        {
+            if (NameMatchesKeyword(name, keyword))
+                return true;
+        }
+        return false;
+    }
+
+    static bool NameMatchesKeyword(string name, string keyword)
+    {
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(keyword))
+            return false;
+
+        return name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     Vector3 GetRandomPointInMovementBounds()

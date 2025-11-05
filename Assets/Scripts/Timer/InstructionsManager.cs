@@ -301,7 +301,12 @@ public class InstructionsManager : MonoBehaviour
 
         instructionsPanel.SetActive(true);
 
-        if (visionMask) visionMask.SetActive(false); 
+        if (visionMask)
+        {
+            visionMask.SetActive(false);
+            if (VisionMaskController.Instance != null)
+                VisionMaskController.Instance.HideMask();
+        }
 
         if (startButton)
         {
@@ -356,7 +361,12 @@ public class InstructionsManager : MonoBehaviour
 
         Time.timeScale = 1f;
 
-        if (visionMask) visionMask.SetActive(true);  
+        if (visionMask)
+        {
+            visionMask.SetActive(true);
+            if (VisionMaskController.Instance != null)
+                VisionMaskController.Instance.ShowMask();
+        }
 
         // Start timer if assigned
         if (timerController != null)
@@ -384,7 +394,12 @@ public class InstructionsManager : MonoBehaviour
 
         Time.timeScale = 1f;
 
-        if (visionMask) visionMask.SetActive(true);
+        if (visionMask)
+        {
+            visionMask.SetActive(true);
+            if (VisionMaskController.Instance != null)
+                VisionMaskController.Instance.ShowMask();
+        }
 
         if (timerController != null)
             timerController.StartTimer(60f);

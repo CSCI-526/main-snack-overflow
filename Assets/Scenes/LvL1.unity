@@ -11562,7 +11562,7 @@ MonoBehaviour:
   instructionsPanel: {fileID: 359235076}
   startButton: {fileID: 87574499}
   skipButton: {fileID: 1568866783}
-  visionMask: {fileID: 0}
+  visionMask: {fileID: 27488014}
   fullText: Find 10 reds before the timer ends!
   typingSpeed: 0.02
   timerController: {fileID: 1472231006}
@@ -34432,7 +34432,7 @@ MonoBehaviour:
   playerSpawn: {fileID: 1368778524}
   npcPrefab: {fileID: 117394769603656870, guid: 0c475097a2bcd4d2fa0dc3f2f38eaa35, type: 3}
   civilianCount: 12
-  impostorCount: 2
+  impostorCount: 10
   npcSpawns:
   - {fileID: 114193405}
   - {fileID: 1859976705}
