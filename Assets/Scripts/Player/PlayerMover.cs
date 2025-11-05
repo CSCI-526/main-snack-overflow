@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMover : MonoBehaviour
@@ -6,6 +7,14 @@ public class PlayerMover : MonoBehaviour
     public float moveSpeed = 6f;
     public float accel = 20f;
     public float groundY = 0.1f;
+
+    [Range(0.1f, 2f)]
+    public float mudMultiplierFallback = 1f;   // lets you tweak defaults in the inspector
+
+    // Track each mud zone currently touching the player so overlapping slows stack correctly.
+    readonly Dictionary<MudZone, float> mudContacts = new();
+    float activeMudMultiplier = 1f;
+    float stunUntil;
 
     Rigidbody rb;
     Camera cam;
@@ -37,7 +46,9 @@ public class PlayerMover : MonoBehaviour
         Vector3 input = new Vector3(h, 0f, v);
         if (input.sqrMagnitude > 0f) input.Normalize();
 
-        desiredVel = input * moveSpeed;
+        desiredVel = input * moveSpeed * activeMudMultiplier;
+        if (IsStunned())
+            desiredVel = Vector3.zero;
 
         // Pin to ground height
         var p = transform.position;
@@ -47,6 +58,12 @@ public class PlayerMover : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (IsStunned())
+        {
+            rb.velocity = Vector3.zero;
+            return;
+        }
+
         // Smooth toward desired velocity; snap to 0 when no input to avoid drift
         Vector3 vel = rb.velocity; vel.y = 0f;
         Vector3 target = desiredVel;
@@ -57,4 +74,41 @@ public class PlayerMover : MonoBehaviour
         else
             rb.velocity = Vector3.MoveTowards(vel, target, accel * Time.fixedDeltaTime);
     }
+
+    public void EnterMud(MudZone zone, float multiplier)
+    {
+        mudContacts[zone] = Mathf.Clamp(multiplier, 0.1f, 1f);
+        RefreshMudMultiplier();
+    }
+
+    public void ExitMud(MudZone zone)
+    {
+        if (mudContacts.Remove(zone))
+            RefreshMudMultiplier();
+    }
+
+    void RefreshMudMultiplier()
+    {
+        if (mudContacts.Count == 0)
+        {
+            activeMudMultiplier = mudMultiplierFallback;
+            return;
+        }
+
+        float slowest = 1f;
+        foreach (var kvp in mudContacts)
+            slowest = Mathf.Min(slowest, kvp.Value);
+
+        activeMudMultiplier = slowest;
+    }
+
+    public void ApplyStun(float duration)
+    {
+        stunUntil = Mathf.Max(stunUntil, Time.time + Mathf.Max(0f, duration));
+        desiredVel = Vector3.zero;
+        if (rb != null)
+            rb.velocity = Vector3.zero;
+    }
+
+    bool IsStunned() => Time.time < stunUntil;
 }
