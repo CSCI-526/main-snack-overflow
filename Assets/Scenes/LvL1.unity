@@ -19443,18 +19443,6 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &402273625
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 402273620}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce155fb8ec954cfaad5aa06c080dd109, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &402273622
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19523,6 +19511,18 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &402273625
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 402273620}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce155fb8ec954cfaad5aa06c080dd109, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &403061563
 GameObject:
   m_ObjectHideFlags: 0
@@ -34444,7 +34444,7 @@ MonoBehaviour:
   playerPrefab: {fileID: 117394769603656870, guid: 2ac7f38a26d2c7c40be0b4b51a45973b, type: 3}
   playerSpawn: {fileID: 1368778524}
   npcPrefab: {fileID: 117394769603656870, guid: 0c475097a2bcd4d2fa0dc3f2f38eaa35, type: 3}
-  civilianCount: 12
+  civilianCount: 35
   impostorCount: 10
   npcSpawns:
   - {fileID: 114193405}
