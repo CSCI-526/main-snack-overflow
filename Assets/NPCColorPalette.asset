@@ -16,12 +16,12 @@ MonoBehaviour:
   - name: Light Blue
     color: {r: 0.30980393, g: 0.7647059, b: 0.96862745, a: 0}
   - name: Tomato
-    color: {r: 1, g: 0.3882353, b: 0.2784314, a: 1}
+    color: {r: 1, g: 0.40695798, b: 0, a: 1}
   - name: Dark Green
     color: {r: 0.038581353, g: 0.4811321, b: 0.06401531, a: 0}
   - name: Red
     color: {r: 1, g: 0, b: 0, a: 1}
   - name: Carmine
-    color: {r: 0.5882353, g: 0, b: 0.09411765, a: 1}
+    color: {r: 0.5377358, g: 0, b: 0.30899388, a: 1}
   - name: Raspberry
-    color: {r: 0.8901961, g: 0.043137256, b: 0.36078432, a: 1}
+    color: {r: 1, g: 0.23113209, b: 0.515792, a: 1}
