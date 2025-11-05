@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 /// <summary>
 /// Guides the player through a short step-by-step tutorial before Level 1 begins.
@@ -34,10 +35,19 @@ public class Level1TutorialController : MonoBehaviour
 
     GameObject overlayRoot;
     CanvasGroup overlayGroup;
-    Text messageText;
+    TextMeshProUGUI messageText;
     Button continueButton;
     RectTransform arrowRoot;
     RectTransform arrowShaftRect;
+    static Sprite solidSprite;
+    static TMP_FontAsset cachedFont;
+    static bool tutorialCompleted;
+
+    GameObject tutorialImpostor;
+    GameObject tutorialCivilian;
+    GameObject tutorialPlayer;
+    NPCIdentity tutorialImpostorId;
+    NPCIdentity tutorialCivilianId;
 
     NPCIdentity targetImpostor;
     NPCIdentity targetCivilian;
@@ -93,7 +103,7 @@ public class Level1TutorialController : MonoBehaviour
     /// </summary>
     public bool TryBeginTutorial(InstructionsManager mgr)
     {
-        if (tutorialActive || !IsLevelOneScene())
+        if (tutorialCompleted || tutorialActive || !IsLevelOneScene())
             return false;
 
         instructions = mgr;
@@ -108,23 +118,130 @@ public class Level1TutorialController : MonoBehaviour
         Time.timeScale = 1f;
 
         instructions.SetVisionMaskActive(true);
-        instructions.TriggerSpawnIfNeeded();
+
+        if (!SetupTutorialActors())
+        {
+            ShowOverlay(false);
+            return false;
+        }
 
         if (clicker != null)
             clicker.enabled = true;
 
         ClickToSmite.OnHitResolved += HandleShotResolved;
         ClickToSmite.HitFilter = FilterHits;
+        ClickToSmite.SuppressGameState = true;
 
         tutorialActive = true;
         movementCaptured = false;
         currentStep = Step.AwaitMovement;
 
-        UpdateMessage("Use WASD or Arrow keys to move.");
+        UpdateMessage("Move using WASD or the Arrow Keys.\nTry walking a little now!");
         continueButton.gameObject.SetActive(false);
         arrowRoot.gameObject.SetActive(false);
+        RefreshOverlayInteractivity();
 
         return true;
+    }
+
+    bool SetupTutorialActors()
+    {
+        if (!spawner)
+            return false;
+
+        ClearTutorialActors();
+
+        EnsurePlayerPresent();
+
+        if (!tutorialPlayer)
+            tutorialPlayer = FindObjectOfType<PlayerMover>()?.gameObject;
+        if (!tutorialPlayer)
+            return false;
+
+        Vector3 origin = spawner.playerSpawn ? spawner.playerSpawn.position : tutorialPlayer.transform.position;
+        origin.y = 0f;
+
+        Vector3 impostorPos = origin + new Vector3(2.5f, 0f, 2f);
+        Vector3 civilianPos = origin + new Vector3(-2.5f, 0f, 2f);
+
+        int redColorId = GameRoundState.Instance ? GameRoundState.Instance.GetImpostorColorId() : 0;
+        if (redColorId < 0 && spawner.palette && spawner.palette.Count > 0)
+            redColorId = 0;
+
+        tutorialImpostor = InstantiateTutorialNpc(true, impostorPos, redColorId);
+        tutorialCivilian = InstantiateTutorialNpc(false, civilianPos, redColorId);
+
+        tutorialImpostorId = tutorialImpostor ? tutorialImpostor.GetComponent<NPCIdentity>() : null;
+        tutorialCivilianId = tutorialCivilian ? tutorialCivilian.GetComponent<NPCIdentity>() : null;
+
+        targetImpostor = tutorialImpostorId;
+        targetCivilian = tutorialCivilianId;
+
+        if (ImpostorTracker.Instance != null)
+        {
+            ImpostorTracker.Instance.ResetCount();
+            if (tutorialImpostorId != null)
+                ImpostorTracker.Instance.RegisterImpostor();
+        }
+
+        return tutorialImpostor && tutorialCivilian;
+    }
+
+    void EnsurePlayerPresent()
+    {
+        var existing = FindObjectOfType<PlayerMover>();
+        if (existing != null)
+        {
+            tutorialPlayer = existing.gameObject;
+            if (spawner && spawner.playerSpawn)
+            {
+                Vector3 p = spawner.playerSpawn.position;
+                p.y = 0f;
+                existing.transform.position = p;
+            }
+            return;
+        }
+
+        if (!spawner || !spawner.playerPrefab)
+            return;
+
+        Vector3 spawnPos = spawner.playerSpawn ? spawner.playerSpawn.position : Vector3.zero;
+        spawnPos.y = 0f;
+
+        tutorialPlayer = Instantiate(spawner.playerPrefab, spawnPos, Quaternion.identity, spawner.playerParent);
+    }
+
+    GameObject InstantiateTutorialNpc(bool isImpostor, Vector3 position, int colorId)
+    {
+        if (!spawner || !spawner.npcPrefab)
+            return null;
+
+        position.y = 0f;
+
+        var npc = Instantiate(spawner.npcPrefab, position, Quaternion.identity, spawner.npcsParent);
+        npc.name = isImpostor ? "Tutorial_Impostor" : "Tutorial_Civilian";
+
+        var id = npc.GetComponent<NPCIdentity>();
+        if (!id) id = npc.AddComponent<NPCIdentity>();
+        id.isImpostor = isImpostor;
+        id.shapeType = PathShape.ShapeType.Circle;
+        id.colorId = colorId;
+
+        if (spawner.palette)
+        {
+            var renderers = npc.GetComponentsInChildren<Renderer>();
+            id.ApplyColor(spawner.palette, renderers);
+        }
+
+        var wander = npc.GetComponent<NPCWander>();
+        if (wander) Destroy(wander);
+        var follower = npc.GetComponent<PathFollower>();
+        if (follower) Destroy(follower);
+
+        var rb = npc.GetComponent<Rigidbody>();
+        if (rb) rb.velocity = Vector3.zero;
+
+        return npc;
     }
 
     void ListenForMovementInput()
@@ -145,9 +262,9 @@ public class Level1TutorialController : MonoBehaviour
     void AdvanceToImpostorStep()
     {
         currentStep = Step.ClickImpostor;
-        targetImpostor = FindImpostor();
+        targetImpostor = tutorialImpostorId != null ? tutorialImpostorId : FindImpostor();
 
-        UpdateMessage("Great! Track down the impostor in red and click to eliminate them.");
+        UpdateMessage("Great! Follow the arrow and click the impostor in red.");
         arrowRoot.gameObject.SetActive(targetImpostor != null);
 
         MaintainImpostorArrow();
@@ -176,6 +293,8 @@ public class Level1TutorialController : MonoBehaviour
 
         if (currentStep == Step.ClickImpostor && correct && id != null && targetImpostor != null && id == targetImpostor)
         {
+            if (ImpostorTracker.Instance != null)
+                ImpostorTracker.Instance.ResetCount();
             targetImpostor = null;
             AdvanceToCivilianStep();
         }
@@ -184,11 +303,12 @@ public class Level1TutorialController : MonoBehaviour
     void AdvanceToCivilianStep()
     {
         currentStep = Step.ShowCivilian;
-        targetCivilian = FindCivilian();
+        targetCivilian = tutorialCivilianId != null ? tutorialCivilianId : FindCivilian();
 
-        UpdateMessage("This one is a civilian wearing red. Do NOT eliminate civilians during the mission.\nPress Continue to begin.");
+        UpdateMessage("This is a civilian also wearing red. Do NOT eliminate civilians.\nPress Continue to begin the mission.");
         continueButton.gameObject.SetActive(true);
         continueButton.interactable = true;
+        RefreshOverlayInteractivity();
 
         MaintainCivilianArrow();
     }
@@ -296,8 +416,8 @@ public class Level1TutorialController : MonoBehaviour
         dimRect.offsetMax = Vector2.zero;
 
         var dimImage = dimGO.AddComponent<Image>();
-        dimImage.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Background.psd");
-        dimImage.color = new Color(0f, 0f, 0f, 0.55f);
+        dimImage.sprite = GetSolidSprite();
+        dimImage.color = new Color(0f, 0f, 0f, 0f);
         dimImage.raycastTarget = false;
 
         var textGO = new GameObject("Message", typeof(RectTransform));
@@ -308,10 +428,10 @@ public class Level1TutorialController : MonoBehaviour
         textRect.anchoredPosition = new Vector2(0f, 80f);
         textRect.sizeDelta = new Vector2(900f, 140f);
 
-        messageText = textGO.AddComponent<Text>();
-        messageText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        messageText.alignment = TextAnchor.MiddleCenter;
-        messageText.fontSize = 28;
+        messageText = textGO.AddComponent<TextMeshProUGUI>();
+        messageText.font = GetFontAsset();
+        messageText.alignment = TextAlignmentOptions.Center;
+        messageText.fontSize = 32;
         messageText.color = Color.white;
         messageText.raycastTarget = false;
 
@@ -324,8 +444,8 @@ public class Level1TutorialController : MonoBehaviour
         btnRect.sizeDelta = new Vector2(260f, 70f);
 
         var btnImage = buttonGO.AddComponent<Image>();
-        btnImage.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
-        btnImage.type = Image.Type.Sliced;
+        btnImage.sprite = GetSolidSprite();
+        btnImage.type = Image.Type.Simple;
         btnImage.color = new Color(0.82f, 0.15f, 0.2f, 0.95f);
 
         continueButton = buttonGO.AddComponent<Button>();
@@ -341,11 +461,11 @@ public class Level1TutorialController : MonoBehaviour
         btnLabelRect.offsetMin = Vector2.zero;
         btnLabelRect.offsetMax = Vector2.zero;
 
-        var btnLabel = btnLabelGO.AddComponent<Text>();
-        btnLabel.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        var btnLabel = btnLabelGO.AddComponent<TextMeshProUGUI>();
+        btnLabel.font = GetFontAsset();
         btnLabel.text = "Continue";
-        btnLabel.alignment = TextAnchor.MiddleCenter;
-        btnLabel.fontSize = 26;
+        btnLabel.alignment = TextAlignmentOptions.Center;
+        btnLabel.fontSize = 30;
         btnLabel.color = Color.white;
         btnLabel.raycastTarget = false;
 
@@ -367,7 +487,7 @@ public class Level1TutorialController : MonoBehaviour
         arrowShaftRect.sizeDelta = new Vector2(120f, 12f);
 
         var shaftImage = shaftGO.AddComponent<Image>();
-        shaftImage.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+        shaftImage.sprite = GetSolidSprite();
         shaftImage.color = Color.white;
         shaftImage.raycastTarget = false;
 
@@ -382,7 +502,7 @@ public class Level1TutorialController : MonoBehaviour
         headRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
 
         var headImage = headGO.AddComponent<Image>();
-        headImage.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+        headImage.sprite = GetSolidSprite();
         headImage.color = Color.white;
         headImage.raycastTarget = false;
 
@@ -397,9 +517,16 @@ public class Level1TutorialController : MonoBehaviour
         if (overlayGroup)
         {
             overlayGroup.alpha = show ? 1f : 0f;
-            overlayGroup.blocksRaycasts = show;
-            overlayGroup.interactable = show;
+            RefreshOverlayInteractivity();
         }
+    }
+
+    void RefreshOverlayInteractivity()
+    {
+        if (!overlayGroup) return;
+        bool allowInput = continueButton != null && continueButton.gameObject.activeInHierarchy;
+        overlayGroup.blocksRaycasts = allowInput;
+        overlayGroup.interactable = allowInput;
     }
 
     void UpdateMessage(string text)
@@ -420,19 +547,35 @@ public class Level1TutorialController : MonoBehaviour
     void FinishTutorial()
     {
         tutorialActive = false;
+        tutorialCompleted = true;
         currentStep = Step.Finished;
+        Time.timeScale = 1f;
+
+        if (continueButton)
+            continueButton.gameObject.SetActive(false);
+        RefreshOverlayInteractivity();
 
         if (ClickToSmite.HitFilter == FilterHits)
             ClickToSmite.HitFilter = null;
         ClickToSmite.OnHitResolved -= HandleShotResolved;
+        ClickToSmite.SuppressGameState = false;
+
+        ClearTutorialActors();
 
         ShowOverlay(false);
 
-        if (timer == null)
-            timer = FindObjectOfType<TimerController>(true);
+        if (ImpostorTracker.Instance != null)
+            ImpostorTracker.Instance.ResetCount();
 
         if (instructions != null)
+        {
+            instructions.SetVisionMaskActive(true);
+            instructions.TriggerSpawnIfNeeded();
             instructions.EnableGameplayUI(true);
+        }
+
+        if (timer == null)
+            timer = FindObjectOfType<TimerController>(true);
 
         if (timer != null)
             timer.StartTimer(60f);
@@ -443,6 +586,32 @@ public class Level1TutorialController : MonoBehaviour
         tutorialActive = false;
         currentStep = Step.Inactive;
         ShowOverlay(false);
+        ClickToSmite.SuppressGameState = false;
+        ClearTutorialActors();
+
+        if (ImpostorTracker.Instance != null)
+            ImpostorTracker.Instance.ResetCount();
+    }
+
+    void ClearTutorialActors()
+    {
+        if (tutorialImpostor)
+            Destroy(tutorialImpostor);
+        if (tutorialCivilian)
+            Destroy(tutorialCivilian);
+
+        tutorialImpostor = null;
+        tutorialCivilian = null;
+        tutorialImpostorId = null;
+        tutorialCivilianId = null;
+        tutorialPlayer = null;
+        targetImpostor = null;
+        targetCivilian = null;
+
+        if (arrowRoot)
+            arrowRoot.gameObject.SetActive(false);
+
+        RefreshOverlayInteractivity();
     }
 
     bool FilterHits(NPCIdentity id)
@@ -467,5 +636,49 @@ public class Level1TutorialController : MonoBehaviour
     {
         var scene = SceneManager.GetActiveScene();
         return scene.IsValid() && scene.name == "LvL1";
+    }
+
+    static Sprite GetSolidSprite()
+    {
+        if (solidSprite != null)
+            return solidSprite;
+
+        var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false)
+        {
+            name = "TutorialSolidTex",
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Repeat,
+            hideFlags = HideFlags.HideAndDontSave
+        };
+        tex.SetPixel(0, 0, Color.white);
+        tex.Apply(false, true);
+
+        solidSprite = Sprite.Create(tex, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f));
+        solidSprite.name = "TutorialSolidSprite";
+        solidSprite.hideFlags = HideFlags.HideAndDontSave;
+        return solidSprite;
+    }
+
+    static TMP_FontAsset GetFontAsset()
+    {
+        if (cachedFont != null)
+            return cachedFont;
+
+        cachedFont = TMP_Settings.defaultFontAsset;
+        if (cachedFont == null)
+            cachedFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+
+        if (cachedFont == null)
+        {
+            var legacy = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (legacy != null)
+            {
+                cachedFont = TMP_FontAsset.CreateFontAsset(legacy);
+                if (cachedFont != null)
+                    cachedFont.hideFlags = HideFlags.HideAndDontSave;
+            }
+        }
+
+        return cachedFont;
     }
 }

@@ -294,19 +294,22 @@ public class InstructionsManager : MonoBehaviour
     public bool autoStart = true;
     [Range(0.5f, 6f)] public float autoStartDelay = 4.0f;
 
+    bool spawnTriggered;
+    bool gameplayUiEnabled;
+    SpawnManager cachedSpawner;
+
     void Start()
     {
         // Pause gameplay while instructions are up
         Time.timeScale = 0f;
 
+        spawnTriggered = false;
+        gameplayUiEnabled = false;
+
         instructionsPanel.SetActive(true);
 
-        if (visionMask)
-        {
-            visionMask.SetActive(false);
-            if (VisionMaskController.Instance != null)
-                VisionMaskController.Instance.HideMask();
-        }
+        SetVisionMaskActive(false);
+        EnableGameplayUI(false);
 
         if (startButton)
         {
@@ -359,30 +362,11 @@ public class InstructionsManager : MonoBehaviour
         instructionsPanel.SetActive(false);
         if (skipButton) skipButton.gameObject.SetActive(false);
 
-        Time.timeScale = 1f;
+        var tutorial = FindObjectOfType<Level1TutorialController>(true);
+        if (tutorial != null && tutorial.isActiveAndEnabled && tutorial.TryBeginTutorial(this))
+            return;
 
-        if (visionMask)
-        {
-            visionMask.SetActive(true);
-            if (VisionMaskController.Instance != null)
-                VisionMaskController.Instance.ShowMask();
-        }
-
-        // Start timer if assigned
-        if (timerController != null)
-            timerController.StartTimer(60f);
-
-        // Spawn NPCs or impostors
-        var spawner = FindObjectOfType<SpawnManager>();
-        if (spawner != null)
-            spawner.StartSpawning();
-
-        // Enable gameplay UI
-        if (enableOnGameplay != null)
-        {
-            foreach (var go in enableOnGameplay)
-                if (go) go.SetActive(true);
-        }
+        StartGameplayNow(true);
     }
 
     // SKIP = same as START, but instant
@@ -392,33 +376,74 @@ public class InstructionsManager : MonoBehaviour
         instructionsPanel.SetActive(false);
         if (skipButton) skipButton.gameObject.SetActive(false);
 
-        Time.timeScale = 1f;
-
-        if (visionMask)
-        {
-            visionMask.SetActive(true);
-            if (VisionMaskController.Instance != null)
-                VisionMaskController.Instance.ShowMask();
-        }
-
-        if (timerController != null)
-            timerController.StartTimer(60f);
-
-        var spawner = FindObjectOfType<SpawnManager>();
-        if (spawner != null)
-            spawner.StartSpawning();
-
-        if (enableOnGameplay != null)
-        {
-            foreach (var go in enableOnGameplay)
-                if (go) go.SetActive(true);
-        }
+        StartGameplayNow(true);
     }
 
     IEnumerator AutoStartAfterDelay()
     {
         yield return new WaitForSecondsRealtime(autoStartDelay);
         OnStartClicked(); // just use the same logic
+    }
+
+    void StartGameplayNow(bool startTimer)
+    {
+        Time.timeScale = 1f;
+
+        SetVisionMaskActive(true);
+        TriggerSpawnIfNeeded();
+        EnableGameplayUI(true);
+
+        if (startTimer && timerController != null)
+            timerController.StartTimer(60f);
+    }
+
+    public void TriggerSpawnIfNeeded()
+    {
+        if (spawnTriggered)
+            return;
+
+        var spawner = GetSpawner();
+        if (spawner != null)
+        {
+            spawner.StartSpawning();
+            spawnTriggered = true;
+        }
+    }
+
+    public void EnableGameplayUI(bool enable)
+    {
+        if (gameplayUiEnabled == enable)
+            return;
+        gameplayUiEnabled = enable;
+
+        if (enableOnGameplay == null)
+            return;
+
+        foreach (var go in enableOnGameplay)
+            if (go) go.SetActive(enable);
+    }
+
+    public void SetVisionMaskActive(bool active)
+    {
+        if (!visionMask)
+            return;
+
+        visionMask.SetActive(active);
+
+        if (VisionMaskController.Instance != null)
+        {
+            if (active)
+                VisionMaskController.Instance.ShowMask();
+            else
+                VisionMaskController.Instance.HideMask();
+        }
+    }
+
+    SpawnManager GetSpawner()
+    {
+        if (cachedSpawner == null)
+            cachedSpawner = FindObjectOfType<SpawnManager>();
+        return cachedSpawner;
     }
 }
 

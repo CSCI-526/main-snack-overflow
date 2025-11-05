@@ -395,6 +395,17 @@ public class SpawnManager : MonoBehaviour
     {
         Vector3 p = playerSpawn ? playerSpawn.position : Vector3.zero;
         p.y = 0f;
+
+        var existing = FindObjectOfType<PlayerMover>();
+        if (existing != null)
+        {
+            existing.transform.position = p;
+            if (playerParent != null && existing.transform.parent != playerParent)
+                existing.transform.SetParent(playerParent);
+            usedSpawnPositions.Add(p);
+            return;
+        }
+
         Instantiate(playerPrefab, p, Quaternion.identity, playerParent);
         usedSpawnPositions.Add(p);
     }

@@ -76,12 +76,28 @@
 //    }
 //}
 
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class ClickToSmite : MonoBehaviour
 {
     public LayerMask npcLayer; // set to NPC layer in Inspector
+
+    /// <summary>
+    /// Optional hook that can veto hits (e.g. tutorial gating). Return true to allow the shot.
+    /// </summary>
+    public static Func<NPCIdentity, bool> HitFilter { get; set; }
+
+    /// <summary>
+    /// When true, skips gameplay side-effects (lives, win panels). Used for tutorials.
+    /// </summary>
+    public static bool SuppressGameState { get; set; }
+
+    /// <summary>
+    /// Fired after a shot resolves. Bool indicates whether the hit was correct.
+    /// </summary>
+    public static event Action<NPCIdentity, bool> OnHitResolved;
 
     void Update()
     {
@@ -98,12 +114,16 @@ public class ClickToSmite : MonoBehaviour
                 if (death == null) return;
 
                 var id = hit.collider.GetComponentInParent<NPCIdentity>();
+
+                if (HitFilter != null && !HitFilter.Invoke(id))
+                    return;
+
                 var grs = GameRoundState.Instance;
 
                 // If no ID, treat as wrong civilian
                 if (id == null)
                 {
-                    HandleWrong(death);
+                    HandleWrong(death, null);
                     return;
                 }
 
@@ -117,10 +137,11 @@ public class ClickToSmite : MonoBehaviour
                 {
                     id.isImpostor = true;
                     HandleCorrect(death, id);
+                    OnHitResolved?.Invoke(id, true);
                 }
                 else
                 {
-                    HandleWrong(death);
+                    HandleWrong(death, id);
                 }
             }
         }
@@ -138,14 +159,14 @@ public class ClickToSmite : MonoBehaviour
             AnalyticsManager.I.OnCorrectHit();
 
         // Notify that an impostor was killed
-        if (id != null && id.isImpostor)
+        if (!SuppressGameState && id != null && id.isImpostor)
             ImpostorTracker.Instance?.OnImpostorKilled();
 
         // Beam + delete NPC
         SunbeamManager.Instance.Smite(death);
     }
 
-    void HandleWrong(NPCDeath death)
+    void HandleWrong(NPCDeath death, NPCIdentity id)
     {
         PreventDoubleHit(death);
 
@@ -160,8 +181,10 @@ public class ClickToSmite : MonoBehaviour
         SunbeamManager.Instance.Smite(death);
 
         // Lose a life on wrong hit
-        if (LivesManager.Instance != null)
+        if (!SuppressGameState && LivesManager.Instance != null)
             LivesManager.Instance.LoseLife();
+
+        OnHitResolved?.Invoke(id, false);
     }
 
     void PreventDoubleHit(NPCDeath death)
