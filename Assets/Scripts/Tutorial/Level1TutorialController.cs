@@ -1,14 +1,13 @@
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Guides the player through a short step-by-step tutorial before Level 1 begins.
-/// Steps:
-/// 1. Prompt for movement input.
-/// 2. Highlight an impostor and require the player to eliminate them.
-/// 3. Highlight a civilian and warn the player not to shoot them, then start the timer.
+/// Lightweight onboarding for Level 1.
+/// Spawns a single red impostor, a differently-coloured civilian, guides the player through movement,
+/// shows click instructions, then hands control back to the normal spawner/timer flow.
 /// </summary>
 [DefaultExecutionOrder(200)]
 public class Level1TutorialController : MonoBehaviour
@@ -22,41 +21,67 @@ public class Level1TutorialController : MonoBehaviour
         Finished
     }
 
-    Step currentStep = Step.Inactive;
+    static readonly Vector2 MessageSizeLarge = new(620f, 150f);
+    static readonly Vector2 MessageSizeMedium = new(540f, 130f);
+    static readonly Vector2 MessageSizeSmall = new(480f, 120f);
+
+    static readonly Vector2 MovementAnchor = new(0.5f, 0.82f);
+    static readonly Vector2 MovementOffset = new(0f, -25f);
+
+    static readonly Vector2 ActionAnchor = new(0.5f, 0.78f);
+    static readonly Vector2 ActionOffset = new(0f, -15f);
+
+static readonly Vector2 CivilianAnchor = new(0.5f, 0.78f);
+static readonly Vector2 CivilianOffset = new(0f, -15f);
+
+readonly Vector2 arrowTailOffset = new(-140f, 55f);
+const float arrowTargetHeight = 1.6f;
+
+const string AccentHex = "#F8B938";
+const string CivilianColorKeyword = "orange";
+static readonly Color TutorialCivilianColor = new Color32(244, 128, 40, 255);
 
     InstructionsManager instructions;
     TimerController timer;
     SpawnManager spawner;
     ClickToSmite clicker;
 
-    RectTransform canvasRect;
     Canvas canvas;
+    RectTransform canvasRect;
     Camera mainCam;
 
-    GameObject overlayRoot;
     CanvasGroup overlayGroup;
+    RectTransform overlayRoot;
+    RectTransform messagePanel;
     TextMeshProUGUI messageText;
-    Button continueButton;
-    RectTransform arrowRoot;
-    RectTransform arrowShaftRect;
+RectTransform arrowRoot;
+RectTransform arrowShaftRect;
+RectTransform arrowHeadRect;
+const float arrowHeadWidth = 26f;
+const float arrowShaftHeight = 12f;
+Button continueButton;
+
     static Sprite solidSprite;
     static TMP_FontAsset cachedFont;
     static bool tutorialCompleted;
 
-    GameObject tutorialImpostor;
-    GameObject tutorialCivilian;
-    GameObject tutorialPlayer;
-    NPCIdentity tutorialImpostorId;
-    NPCIdentity tutorialCivilianId;
-
-    NPCIdentity targetImpostor;
-    NPCIdentity targetCivilian;
-
+    Step currentStep = Step.Inactive;
     bool tutorialActive;
     bool movementCaptured;
 
-    readonly Vector2 arrowOffset = new(-220f, 90f);
-    const float arrowTargetHeight = 1.6f;
+    GameObject tutorialPlayer;
+    GameObject tutorialImpostor;
+    GameObject tutorialCivilian;
+    NPCIdentity tutorialImpostorId;
+    NPCIdentity tutorialCivilianId;
+    TutorialDrifter impostorDrifter;
+TutorialDrifter civilianDrifter;
+string civilianColorDisplayName = "civilian";
+string civilianColorHex = "#F48028";
+string impostorColorHex = "#FF4F4F";
+
+    NPCIdentity targetImpostor;
+    NPCIdentity targetCivilian;
 
     void Awake()
     {
@@ -73,34 +98,9 @@ public class Level1TutorialController : MonoBehaviour
             ClickToSmite.HitFilter = null;
 
         ClickToSmite.OnHitResolved -= HandleShotResolved;
-
+        ClickToSmite.SuppressGameState = false;
     }
 
-    void Update()
-    {
-        if (!tutorialActive)
-            return;
-
-        if (!mainCam)
-            mainCam = Camera.main;
-
-        switch (currentStep)
-        {
-            case Step.AwaitMovement:
-                ListenForMovementInput();
-                break;
-            case Step.ClickImpostor:
-                MaintainImpostorArrow();
-                break;
-            case Step.ShowCivilian:
-                MaintainCivilianArrow();
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Invoked by InstructionsManager. Returns true if the tutorial took over the start flow.
-    /// </summary>
     public bool TryBeginTutorial(InstructionsManager mgr)
     {
         if (tutorialCompleted || tutorialActive || !IsLevelOneScene())
@@ -116,7 +116,6 @@ public class Level1TutorialController : MonoBehaviour
         ShowOverlay(true);
 
         Time.timeScale = 1f;
-
         instructions.SetVisionMaskActive(true);
 
         if (!SetupTutorialActors())
@@ -136,7 +135,7 @@ public class Level1TutorialController : MonoBehaviour
         movementCaptured = false;
         currentStep = Step.AwaitMovement;
 
-        UpdateMessage("Move using WASD or the Arrow Keys.\nTry walking a little now!");
+        ShowMovementMessage();
         continueButton.gameObject.SetActive(false);
         arrowRoot.gameObject.SetActive(false);
         RefreshOverlayInteractivity();
@@ -150,7 +149,6 @@ public class Level1TutorialController : MonoBehaviour
             return false;
 
         ClearTutorialActors();
-
         EnsurePlayerPresent();
 
         if (!tutorialPlayer)
@@ -161,18 +159,17 @@ public class Level1TutorialController : MonoBehaviour
         Vector3 origin = spawner.playerSpawn ? spawner.playerSpawn.position : tutorialPlayer.transform.position;
         origin.y = 0f;
 
-        Vector3 impostorPos = origin + new Vector3(2.5f, 0f, 2f);
-        Vector3 civilianPos = origin + new Vector3(-2.5f, 0f, 2f);
+        Vector3 impostorPos = SnapToGround(origin + new Vector3(2.5f, 0f, 2f));
+        Vector3 civilianPos = SnapToGround(origin + new Vector3(-2.5f, 0f, 2f));
 
-        int redColorId = GameRoundState.Instance ? GameRoundState.Instance.GetImpostorColorId() : 0;
-        if (redColorId < 0 && spawner.palette && spawner.palette.Count > 0)
-            redColorId = 0;
+        int impostorColorId = GetImpostorColorId();
+        impostorColorHex = GetColorHex(impostorColorId, impostorColorHex);
+        tutorialImpostor = InstantiateTutorialNpc(true, impostorPos, impostorColorId, out tutorialImpostorId, out impostorDrifter);
 
-        tutorialImpostor = InstantiateTutorialNpc(true, impostorPos, redColorId);
-        tutorialCivilian = InstantiateTutorialNpc(false, civilianPos, redColorId);
-
-        tutorialImpostorId = tutorialImpostor ? tutorialImpostor.GetComponent<NPCIdentity>() : null;
-        tutorialCivilianId = tutorialCivilian ? tutorialCivilian.GetComponent<NPCIdentity>() : null;
+        int civilianColorId = GetCivilianColorId(impostorColorId);
+        tutorialCivilian = InstantiateTutorialNpc(false, civilianPos, civilianColorId, out tutorialCivilianId, out civilianDrifter);
+        civilianColorHex = ColorUtility.ToHtmlStringRGB(TutorialCivilianColor);
+        civilianColorDisplayName = "orange";
 
         targetImpostor = tutorialImpostorId;
         targetCivilian = tutorialCivilianId;
@@ -211,37 +208,120 @@ public class Level1TutorialController : MonoBehaviour
         tutorialPlayer = Instantiate(spawner.playerPrefab, spawnPos, Quaternion.identity, spawner.playerParent);
     }
 
-    GameObject InstantiateTutorialNpc(bool isImpostor, Vector3 position, int colorId)
+    GameObject InstantiateTutorialNpc(bool isImpostor, Vector3 position, int colorId, out NPCIdentity identity, out TutorialDrifter drifter)
     {
+        identity = null;
+        drifter = null;
+
         if (!spawner || !spawner.npcPrefab)
             return null;
 
-        position.y = 0f;
-
-        var npc = Instantiate(spawner.npcPrefab, position, Quaternion.identity, spawner.npcsParent);
+        Vector3 spawnPos = SnapToGround(position);
+        var npc = Instantiate(spawner.npcPrefab, spawnPos, Quaternion.identity, spawner.npcsParent);
+        AlignToGround(npc, spawnPos.y);
         npc.name = isImpostor ? "Tutorial_Impostor" : "Tutorial_Civilian";
 
-        var id = npc.GetComponent<NPCIdentity>();
-        if (!id) id = npc.AddComponent<NPCIdentity>();
-        id.isImpostor = isImpostor;
-        id.shapeType = PathShape.ShapeType.Circle;
-        id.colorId = colorId;
+        identity = npc.GetComponent<NPCIdentity>();
+        if (!identity) identity = npc.AddComponent<NPCIdentity>();
+        identity.isImpostor = isImpostor;
+        identity.shapeType = PathShape.ShapeType.Circle;
+        identity.colorId = colorId;
 
+        var renderers = npc.GetComponentsInChildren<Renderer>();
         if (spawner.palette)
+            identity.ApplyColor(spawner.palette, renderers);
+
+        if (!isImpostor)
         {
-            var renderers = npc.GetComponentsInChildren<Renderer>();
-            id.ApplyColor(spawner.palette, renderers);
+            foreach (var r in renderers)
+            {
+                if (!r) continue;
+                var mat = new Material(r.material);
+                mat.color = TutorialCivilianColor;
+                r.material = mat;
+            }
         }
 
-        var wander = npc.GetComponent<NPCWander>();
-        if (wander) Destroy(wander);
-        var follower = npc.GetComponent<PathFollower>();
-        if (follower) Destroy(follower);
+        foreach (var component in npc.GetComponents<MonoBehaviour>())
+        {
+            if (component == identity) continue;
+            if (component is NPCWander or PathFollower)
+                Destroy(component);
+        }
 
         var rb = npc.GetComponent<Rigidbody>();
         if (rb) rb.velocity = Vector3.zero;
 
+        drifter = npc.AddComponent<TutorialDrifter>();
+        drifter.Initialise(radius: 1f, speed: 0.35f);
+
         return npc;
+    }
+
+    int GetImpostorColorId()
+    {
+        if (GameRoundState.Instance != null)
+        {
+            int id = GameRoundState.Instance.GetImpostorColorId();
+            if (id >= 0) return id;
+        }
+
+        if (spawner && spawner.palette && spawner.palette.Count > 0)
+            return Mathf.Clamp(spawner.palette.Count - 1, 0, spawner.palette.Count - 1);
+
+        return 0;
+    }
+
+    int GetCivilianColorId(int avoidColorId)
+    {
+        if (!spawner || !spawner.palette || spawner.palette.Count == 0)
+            return avoidColorId;
+
+        int fallback = -1;
+        for (int i = 0; i < spawner.palette.Count; i++)
+        {
+            if (i == avoidColorId) continue;
+            string name = spawner.palette.GetName(i);
+            if (NameMatchesKeyword(name, "orange"))
+                return i;
+            if (!NameMatchesKeyword(name, "red") && fallback == -1)
+                fallback = i;
+        }
+
+        if (fallback != -1)
+            return fallback;
+
+        return (avoidColorId + 1) % spawner.palette.Count;
+    }
+
+    static bool NameMatchesKeyword(string name, string keyword)
+    {
+        if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(keyword))
+            return false;
+        return name.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    string GetColorHex(int colorId, string fallback)
+    {
+        if (spawner && spawner.palette && colorId >= 0 && colorId < spawner.palette.Count)
+        {
+            Color c = spawner.palette.Get(colorId);
+            return ColorUtility.ToHtmlStringRGB(c);
+        }
+        return fallback.TrimStart('#');
+    }
+
+    string GetColorDisplayName(int colorId)
+    {
+        if (!spawner || !spawner.palette || colorId < 0 || colorId >= spawner.palette.Count)
+            return "civilian";
+
+        string name = spawner.palette.GetName(colorId);
+        if (string.IsNullOrWhiteSpace(name))
+            return "civilian";
+
+        name = name.Replace('_', ' ');
+        return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(name.Trim());
     }
 
     void ListenForMovementInput()
@@ -264,9 +344,7 @@ public class Level1TutorialController : MonoBehaviour
         currentStep = Step.ClickImpostor;
         targetImpostor = tutorialImpostorId != null ? tutorialImpostorId : FindImpostor();
 
-        UpdateMessage("Great! Follow the arrow and click the impostor in red.");
-        arrowRoot.gameObject.SetActive(targetImpostor != null);
-
+        ShowImpostorMessage();
         MaintainImpostorArrow();
     }
 
@@ -283,21 +361,7 @@ public class Level1TutorialController : MonoBehaviour
         }
 
         arrowRoot.gameObject.SetActive(true);
-        UpdateArrowToTarget(targetImpostor.transform);
-    }
-
-    void HandleShotResolved(NPCIdentity id, bool correct)
-    {
-        if (!tutorialActive)
-            return;
-
-        if (currentStep == Step.ClickImpostor && correct && id != null && targetImpostor != null && id == targetImpostor)
-        {
-            if (ImpostorTracker.Instance != null)
-                ImpostorTracker.Instance.ResetCount();
-            targetImpostor = null;
-            AdvanceToCivilianStep();
-        }
+        UpdateArrowToTarget(targetImpostor.transform, 1.0f);
     }
 
     void AdvanceToCivilianStep()
@@ -305,7 +369,7 @@ public class Level1TutorialController : MonoBehaviour
         currentStep = Step.ShowCivilian;
         targetCivilian = tutorialCivilianId != null ? tutorialCivilianId : FindCivilian();
 
-        UpdateMessage("This is a civilian also wearing red. Do NOT eliminate civilians.\nPress Continue to begin the mission.");
+        ShowCivilianMessage();
         continueButton.gameObject.SetActive(true);
         continueButton.interactable = true;
         RefreshOverlayInteractivity();
@@ -326,10 +390,10 @@ public class Level1TutorialController : MonoBehaviour
         }
 
         arrowRoot.gameObject.SetActive(true);
-        UpdateArrowToTarget(targetCivilian.transform);
+        UpdateArrowToTarget(targetCivilian.transform, 0.95f);
     }
 
-    void UpdateArrowToTarget(Transform target)
+    void UpdateArrowToTarget(Transform target, float yOffsetMultiplier = 1f)
     {
         if (!target || !canvasRect)
             return;
@@ -337,202 +401,115 @@ public class Level1TutorialController : MonoBehaviour
         if (!mainCam)
             mainCam = Camera.main;
 
-        Vector3 worldPoint = target.position + Vector3.up * arrowTargetHeight;
-        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(mainCam, worldPoint);
+        Vector3 boundsCenter = target.position;
+        var renderer = target.GetComponentInChildren<Renderer>();
+        if (renderer)
+            boundsCenter = renderer.bounds.center;
+
+        float halfHeight = 0.8f;
+        if (renderer)
+            halfHeight = renderer.bounds.extents.y;
+
+        Vector3 worldTip = boundsCenter + Vector3.up * halfHeight * yOffsetMultiplier;
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(mainCam, worldTip);
 
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            canvasRect,
-            screenPoint,
-            canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
-            out Vector2 localPoint))
+                canvasRect,
+                screenPoint,
+                canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+                out Vector2 localPoint))
         {
-            Vector2 anchor = localPoint + arrowOffset;
-            arrowRoot.anchoredPosition = anchor;
+            Vector2 basePos = localPoint + arrowTailOffset;
+            arrowRoot.anchoredPosition = basePos;
 
-            Vector2 delta = localPoint - anchor;
+            Vector2 delta = localPoint - basePos;
             float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
             arrowRoot.localEulerAngles = new Vector3(0f, 0f, angle);
 
-            float shaftLength = Mathf.Max(40f, delta.magnitude - 30f);
+            float tipDistance = delta.magnitude;
+            float shaftLength = Mathf.Max(10f, tipDistance - arrowHeadWidth * 0.5f);
             if (arrowShaftRect != null)
-                arrowShaftRect.sizeDelta = new Vector2(shaftLength, arrowShaftRect.sizeDelta.y);
+            {
+                arrowShaftRect.sizeDelta = new Vector2(shaftLength, arrowShaftHeight);
+                arrowShaftRect.anchoredPosition = Vector2.zero;
+            }
+
+            if (arrowHeadRect != null)
+                arrowHeadRect.anchoredPosition = new Vector2(shaftLength, 0f);
         }
     }
 
     NPCIdentity FindImpostor()
     {
-        var candidates = FindObjectsOfType<NPCIdentity>();
-        foreach (var id in candidates)
+        var identities = FindObjectsOfType<NPCIdentity>();
+        foreach (var id in identities)
         {
-            if (!id || !id.isActiveAndEnabled)
-                continue;
-            if (!id.isImpostor)
-                continue;
-            return id;
+            if (id && id.isImpostor)
+                return id;
         }
         return null;
     }
 
     NPCIdentity FindCivilian()
     {
-        var candidates = FindObjectsOfType<NPCIdentity>();
-        foreach (var id in candidates)
+        var identities = FindObjectsOfType<NPCIdentity>();
+        foreach (var id in identities)
         {
-            if (!id || !id.isActiveAndEnabled)
-                continue;
-            if (id.isImpostor)
-                continue;
-            return id;
+            if (id && !id.isImpostor)
+                return id;
         }
         return null;
     }
 
-    void EnsureUI()
+    void HandleShotResolved(NPCIdentity id, bool correct)
     {
-        if (overlayRoot)
+        if (!tutorialActive)
             return;
 
-        overlayRoot = new GameObject("Level1TutorialOverlay", typeof(RectTransform));
-        overlayRoot.transform.SetParent(transform, false);
+        if (id != null)
+            DisableDrifter(id);
 
-        var rootRect = overlayRoot.GetComponent<RectTransform>();
-        rootRect.anchorMin = Vector2.zero;
-        rootRect.anchorMax = Vector2.one;
-        rootRect.offsetMin = Vector2.zero;
-        rootRect.offsetMax = Vector2.zero;
-        rootRect.pivot = new Vector2(0.5f, 0.5f);
-
-        overlayGroup = overlayRoot.AddComponent<CanvasGroup>();
-        overlayGroup.alpha = 0f;
-        overlayGroup.blocksRaycasts = true;
-        overlayGroup.interactable = true;
-
-        var dimGO = new GameObject("Dimmer", typeof(RectTransform));
-        var dimRect = dimGO.GetComponent<RectTransform>();
-        dimRect.SetParent(overlayRoot.transform, false);
-        dimRect.anchorMin = Vector2.zero;
-        dimRect.anchorMax = Vector2.one;
-        dimRect.offsetMin = Vector2.zero;
-        dimRect.offsetMax = Vector2.zero;
-
-        var dimImage = dimGO.AddComponent<Image>();
-        dimImage.sprite = GetSolidSprite();
-        dimImage.color = new Color(0f, 0f, 0f, 0f);
-        dimImage.raycastTarget = false;
-
-        var textGO = new GameObject("Message", typeof(RectTransform));
-        var textRect = textGO.GetComponent<RectTransform>();
-        textRect.SetParent(overlayRoot.transform, false);
-        textRect.anchorMin = new Vector2(0.5f, 0.1f);
-        textRect.anchorMax = new Vector2(0.5f, 0.1f);
-        textRect.anchoredPosition = new Vector2(0f, 80f);
-        textRect.sizeDelta = new Vector2(900f, 140f);
-
-        messageText = textGO.AddComponent<TextMeshProUGUI>();
-        messageText.font = GetFontAsset();
-        messageText.alignment = TextAlignmentOptions.Center;
-        messageText.fontSize = 32;
-        messageText.color = Color.white;
-        messageText.raycastTarget = false;
-
-        var buttonGO = new GameObject("ContinueButton", typeof(RectTransform));
-        var btnRect = buttonGO.GetComponent<RectTransform>();
-        btnRect.SetParent(overlayRoot.transform, false);
-        btnRect.anchorMin = new Vector2(0.5f, 0.1f);
-        btnRect.anchorMax = new Vector2(0.5f, 0.1f);
-        btnRect.anchoredPosition = new Vector2(0f, 15f);
-        btnRect.sizeDelta = new Vector2(260f, 70f);
-
-        var btnImage = buttonGO.AddComponent<Image>();
-        btnImage.sprite = GetSolidSprite();
-        btnImage.type = Image.Type.Simple;
-        btnImage.color = new Color(0.82f, 0.15f, 0.2f, 0.95f);
-
-        continueButton = buttonGO.AddComponent<Button>();
-        continueButton.targetGraphic = btnImage;
-        continueButton.onClick.AddListener(OnContinueClicked);
-        continueButton.gameObject.SetActive(false);
-
-        var btnLabelGO = new GameObject("Label", typeof(RectTransform));
-        var btnLabelRect = btnLabelGO.GetComponent<RectTransform>();
-        btnLabelRect.SetParent(buttonGO.transform, false);
-        btnLabelRect.anchorMin = Vector2.zero;
-        btnLabelRect.anchorMax = Vector2.one;
-        btnLabelRect.offsetMin = Vector2.zero;
-        btnLabelRect.offsetMax = Vector2.zero;
-
-        var btnLabel = btnLabelGO.AddComponent<TextMeshProUGUI>();
-        btnLabel.font = GetFontAsset();
-        btnLabel.text = "Continue";
-        btnLabel.alignment = TextAlignmentOptions.Center;
-        btnLabel.fontSize = 30;
-        btnLabel.color = Color.white;
-        btnLabel.raycastTarget = false;
-
-        var arrowGO = new GameObject("Arrow", typeof(RectTransform));
-        arrowRoot = arrowGO.GetComponent<RectTransform>();
-        arrowRoot.SetParent(overlayRoot.transform, false);
-        arrowRoot.anchorMin = new Vector2(0.5f, 0.5f);
-        arrowRoot.anchorMax = new Vector2(0.5f, 0.5f);
-        arrowRoot.pivot = new Vector2(0f, 0.5f);
-        arrowRoot.sizeDelta = new Vector2(200f, 40f);
-
-        var shaftGO = new GameObject("Shaft", typeof(RectTransform));
-        arrowShaftRect = shaftGO.GetComponent<RectTransform>();
-        arrowShaftRect.SetParent(arrowRoot, false);
-        arrowShaftRect.anchorMin = new Vector2(0f, 0.5f);
-        arrowShaftRect.anchorMax = new Vector2(0f, 0.5f);
-        arrowShaftRect.pivot = new Vector2(0f, 0.5f);
-        arrowShaftRect.anchoredPosition = Vector2.zero;
-        arrowShaftRect.sizeDelta = new Vector2(120f, 12f);
-
-        var shaftImage = shaftGO.AddComponent<Image>();
-        shaftImage.sprite = GetSolidSprite();
-        shaftImage.color = Color.white;
-        shaftImage.raycastTarget = false;
-
-        var headGO = new GameObject("Head", typeof(RectTransform));
-        var headRect = headGO.GetComponent<RectTransform>();
-        headRect.SetParent(arrowRoot, false);
-        headRect.anchorMin = new Vector2(1f, 0.5f);
-        headRect.anchorMax = new Vector2(1f, 0.5f);
-        headRect.pivot = new Vector2(0.5f, 0.5f);
-        headRect.anchoredPosition = Vector2.zero;
-        headRect.sizeDelta = new Vector2(26f, 26f);
-        headRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
-
-        var headImage = headGO.AddComponent<Image>();
-        headImage.sprite = GetSolidSprite();
-        headImage.color = Color.white;
-        headImage.raycastTarget = false;
-
-        arrowRoot.gameObject.SetActive(false);
-    }
-
-    void ShowOverlay(bool show)
-    {
-        if (!overlayRoot) return;
-
-        overlayRoot.SetActive(show);
-        if (overlayGroup)
+        if (currentStep == Step.ClickImpostor && correct && id != null && targetImpostor != null && id == targetImpostor)
         {
-            overlayGroup.alpha = show ? 1f : 0f;
-            RefreshOverlayInteractivity();
+            if (ImpostorTracker.Instance != null)
+                ImpostorTracker.Instance.ResetCount();
+
+            targetImpostor = null;
+            arrowRoot.gameObject.SetActive(false);
+            AdvanceToCivilianStep();
         }
     }
 
-    void RefreshOverlayInteractivity()
+    void DisableDrifter(NPCIdentity id)
     {
-        if (!overlayGroup) return;
-        bool allowInput = continueButton != null && continueButton.gameObject.activeInHierarchy;
-        overlayGroup.blocksRaycasts = allowInput;
-        overlayGroup.interactable = allowInput;
+        if (!id) return;
+
+        if (tutorialImpostorId == id && impostorDrifter)
+            impostorDrifter.enabled = false;
+        if (tutorialCivilianId == id && civilianDrifter)
+            civilianDrifter.enabled = false;
     }
 
-    void UpdateMessage(string text)
+    void Update()
     {
-        if (messageText)
-            messageText.text = text;
+        if (!tutorialActive)
+            return;
+
+        if (!mainCam)
+            mainCam = Camera.main;
+
+        switch (currentStep)
+        {
+            case Step.AwaitMovement:
+                ListenForMovementInput();
+                break;
+            case Step.ClickImpostor:
+                MaintainImpostorArrow();
+                break;
+            case Step.ShowCivilian:
+                MaintainCivilianArrow();
+                break;
+        }
     }
 
     void OnContinueClicked()
@@ -561,7 +538,6 @@ public class Level1TutorialController : MonoBehaviour
         ClickToSmite.SuppressGameState = false;
 
         ClearTutorialActors();
-
         ShowOverlay(false);
 
         if (ImpostorTracker.Instance != null)
@@ -619,17 +595,256 @@ public class Level1TutorialController : MonoBehaviour
         if (!tutorialActive)
             return true;
 
-        switch (currentStep)
+        return currentStep switch
         {
-            case Step.AwaitMovement:
-                return false;
-            case Step.ClickImpostor:
-                return id != null && targetImpostor != null && id == targetImpostor;
-            case Step.ShowCivilian:
-                return false;
-            default:
-                return true;
+            Step.AwaitMovement => false,
+            Step.ClickImpostor => id != null && targetImpostor != null && id == targetImpostor,
+            Step.ShowCivilian => false,
+            _ => true,
+        };
+    }
+
+    Vector3 SnapToGround(Vector3 position)
+    {
+        float probeHeight = spawner != null ? spawner.groundProbeHeight : 4f;
+        float probeDistance = spawner != null ? spawner.groundProbeDistance : 6f;
+        LayerMask mask = spawner != null ? spawner.groundMask : Physics.DefaultRaycastLayers;
+
+        Vector3 origin = position + Vector3.up * probeHeight;
+        float maxDistance = probeHeight + probeDistance;
+
+        if (Physics.Raycast(origin, Vector3.down, out var hit, maxDistance, mask, QueryTriggerInteraction.Ignore))
+            position.y = hit.point.y;
+
+        return position;
+    }
+
+    void AlignToGround(GameObject npc, float groundY)
+    {
+        if (!npc)
+            return;
+
+        var renderer = npc.GetComponentInChildren<Renderer>();
+        if (renderer == null)
+            return;
+
+        float bottom = renderer.bounds.min.y;
+        float offset = groundY - bottom;
+        npc.transform.position += new Vector3(0f, offset, 0f);
+    }
+
+    void EnsureUI()
+    {
+        if (overlayRoot)
+            return;
+
+        overlayRoot = new GameObject("Level1TutorialOverlay", typeof(RectTransform)).GetComponent<RectTransform>();
+        overlayRoot.SetParent(transform, false);
+        overlayRoot.anchorMin = Vector2.zero;
+        overlayRoot.anchorMax = Vector2.one;
+        overlayRoot.offsetMin = Vector2.zero;
+        overlayRoot.offsetMax = Vector2.zero;
+
+        overlayGroup = overlayRoot.gameObject.AddComponent<CanvasGroup>();
+        overlayGroup.alpha = 0f;
+        overlayGroup.blocksRaycasts = false;
+        overlayGroup.interactable = false;
+
+        messagePanel = new GameObject("MessagePanel", typeof(RectTransform)).GetComponent<RectTransform>();
+        messagePanel.SetParent(overlayRoot, false);
+        messagePanel.anchorMin = MovementAnchor;
+        messagePanel.anchorMax = MovementAnchor;
+        messagePanel.pivot = new Vector2(0.5f, 0.5f);
+        messagePanel.sizeDelta = MessageSizeMedium;
+        messagePanel.anchoredPosition = MovementOffset;
+
+        var panelImage = messagePanel.gameObject.AddComponent<Image>();
+        panelImage.sprite = GetSolidSprite();
+        panelImage.color = new Color(0.06f, 0.07f, 0.12f, 0.9f);
+        panelImage.raycastTarget = false;
+
+        var panelShadow = messagePanel.gameObject.AddComponent<Shadow>();
+        panelShadow.effectColor = new Color(0f, 0f, 0f, 0.6f);
+        panelShadow.effectDistance = new Vector2(0f, -3f);
+
+        var textGO = new GameObject("Message", typeof(RectTransform));
+        var textRect = textGO.GetComponent<RectTransform>();
+        textRect.SetParent(messagePanel, false);
+        textRect.anchorMin = new Vector2(0.1f, 0.12f);
+        textRect.anchorMax = new Vector2(0.9f, 0.88f);
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        messageText = textGO.AddComponent<TextMeshProUGUI>();
+        messageText.font = GetFontAsset();
+        messageText.fontSize = 30f;
+        messageText.alignment = TextAlignmentOptions.Center;
+        messageText.color = Color.white;
+        messageText.raycastTarget = false;
+        messageText.richText = true;
+        messageText.enableWordWrapping = true;
+
+        var messageOutline = messageText.gameObject.AddComponent<Outline>();
+        messageOutline.effectColor = new Color(0f, 0f, 0f, 0.4f);
+        messageOutline.effectDistance = new Vector2(1.5f, -1.5f);
+
+        var buttonGO = new GameObject("ContinueButton", typeof(RectTransform));
+        var btnRect = buttonGO.GetComponent<RectTransform>();
+        btnRect.SetParent(overlayRoot, false);
+        btnRect.anchorMin = new Vector2(0.5f, 0.22f);
+        btnRect.anchorMax = new Vector2(0.5f, 0.22f);
+        btnRect.pivot = new Vector2(0.5f, 0.5f);
+        btnRect.sizeDelta = new Vector2(240f, 66f);
+        btnRect.anchoredPosition = new Vector2(0f, 0f);
+
+        var btnImage = buttonGO.AddComponent<Image>();
+        btnImage.sprite = GetSolidSprite();
+        btnImage.type = Image.Type.Simple;
+        btnImage.color = new Color(0.9f, 0.25f, 0.28f, 0.95f);
+        btnImage.raycastTarget = true;
+
+        var btnShadow = buttonGO.AddComponent<Shadow>();
+        btnShadow.effectDistance = new Vector2(0f, -3f);
+        btnShadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
+
+        continueButton = buttonGO.AddComponent<Button>();
+        continueButton.targetGraphic = btnImage;
+        continueButton.onClick.AddListener(OnContinueClicked);
+        continueButton.gameObject.SetActive(false);
+
+        var btnLabelGO = new GameObject("Label", typeof(RectTransform));
+        var btnLabelRect = btnLabelGO.GetComponent<RectTransform>();
+        btnLabelRect.SetParent(buttonGO.transform, false);
+        btnLabelRect.anchorMin = Vector2.zero;
+        btnLabelRect.anchorMax = Vector2.one;
+        btnLabelRect.offsetMin = Vector2.zero;
+        btnLabelRect.offsetMax = Vector2.zero;
+
+        var btnLabel = btnLabelGO.AddComponent<TextMeshProUGUI>();
+        btnLabel.font = GetFontAsset();
+        btnLabel.text = "Continue";
+        btnLabel.fontSize = 30f;
+        btnLabel.alignment = TextAlignmentOptions.Center;
+        btnLabel.color = Color.white;
+        btnLabel.raycastTarget = false;
+
+        var arrowGO = new GameObject("Arrow", typeof(RectTransform));
+        arrowRoot = arrowGO.GetComponent<RectTransform>();
+        arrowRoot.SetParent(overlayRoot, false);
+        arrowRoot.anchorMin = new Vector2(0.5f, 0.5f);
+        arrowRoot.anchorMax = new Vector2(0.5f, 0.5f);
+        arrowRoot.pivot = new Vector2(0f, 0.5f);
+        arrowRoot.sizeDelta = new Vector2(200f, 40f);
+
+        var shaftGO = new GameObject("Shaft", typeof(RectTransform));
+        arrowShaftRect = shaftGO.GetComponent<RectTransform>();
+        arrowShaftRect.SetParent(arrowRoot, false);
+        arrowShaftRect.anchorMin = new Vector2(0f, 0.5f);
+        arrowShaftRect.anchorMax = new Vector2(0f, 0.5f);
+        arrowShaftRect.pivot = new Vector2(0f, 0.5f);
+        arrowShaftRect.anchoredPosition = Vector2.zero;
+        arrowShaftRect.sizeDelta = new Vector2(120f, arrowShaftHeight);
+
+        var shaftImage = shaftGO.AddComponent<Image>();
+        shaftImage.sprite = GetSolidSprite();
+        shaftImage.color = Color.white;
+        shaftImage.raycastTarget = false;
+
+        var headGO = new GameObject("Head", typeof(RectTransform));
+        arrowHeadRect = headGO.GetComponent<RectTransform>();
+arrowHeadRect.SetParent(arrowRoot, false);
+arrowHeadRect.anchorMin = new Vector2(0f, 0.5f);
+arrowHeadRect.anchorMax = new Vector2(0f, 0.5f);
+arrowHeadRect.pivot = new Vector2(0.5f, 0.5f);
+        arrowHeadRect.anchoredPosition = new Vector2(arrowHeadWidth * 0.5f, 0f);
+arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
+        arrowHeadRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
+
+        var headImage = headGO.AddComponent<Image>();
+        headImage.sprite = GetSolidSprite();
+        headImage.color = Color.white;
+        headImage.raycastTarget = false;
+
+        arrowRoot.gameObject.SetActive(false);
+    }
+
+    void ShowOverlay(bool show)
+    {
+        if (!overlayRoot)
+            return;
+
+        overlayRoot.gameObject.SetActive(show);
+        if (overlayGroup)
+        {
+            overlayGroup.alpha = show ? 1f : 0f;
+            RefreshOverlayInteractivity();
         }
+    }
+
+    void RefreshOverlayInteractivity()
+    {
+        if (!overlayGroup)
+            return;
+
+        bool allowInput = continueButton != null && continueButton.gameObject.activeInHierarchy;
+        overlayGroup.blocksRaycasts = allowInput;
+        overlayGroup.interactable = allowInput;
+    }
+
+    void ShowMovementMessage()
+    {
+        string title = "<size=32><b>Move Around</b></size>";
+        string body = "<size=24>Use <b>W A S D</b> or the <b>Arrow Keys</b> to walk a little.</size>";
+        string hint = "<size=22>Take a few steps to continue.</size>";
+
+        SetMessage(
+            title + "\n" + body + "\n" + hint,
+            MovementAnchor,
+            MovementOffset,
+            MessageSizeMedium);
+    }
+
+    void ShowImpostorMessage()
+    {
+        string title = $"<size=32><b>Find the <color=#{impostorColorHex}>Red Impostor</color></b></size>";
+        string body = $"<size=24>Follow the arrow and <b>left-click</b> the <color=#{impostorColorHex}>red impostor</color>.</size>";
+        string hint = null;
+
+        var message = title + "\n" + body;
+        if (!string.IsNullOrEmpty(hint))
+            message += "\n" + hint;
+
+        SetMessage(
+            message,
+            ActionAnchor,
+            ActionOffset,
+            MessageSizeMedium);
+    }
+
+    void ShowCivilianMessage()
+    {
+        string title = $"<size=32><b>Leave <color=#{civilianColorHex}>Civilians</color> Alone</b></size>";
+        string body = $"<size=24>This <color=#{civilianColorHex}>orange civilian</color> is harmless. Do <b>not</b> click them.</size>";
+        string hint = "<size=22>Press Continue to start the real mission.</size>";
+
+        SetMessage(
+            title + "\n" + body + "\n" + hint,
+            CivilianAnchor,
+            CivilianOffset,
+            MessageSizeLarge);
+    }
+
+    void SetMessage(string text, Vector2 anchor, Vector2 offset, Vector2 size)
+    {
+        if (!messagePanel || !messageText)
+            return;
+
+        messagePanel.anchorMin = anchor;
+        messagePanel.anchorMax = anchor;
+        messagePanel.anchoredPosition = offset;
+        messagePanel.sizeDelta = size;
+
+        messageText.text = text;
     }
 
     static bool IsLevelOneScene()
