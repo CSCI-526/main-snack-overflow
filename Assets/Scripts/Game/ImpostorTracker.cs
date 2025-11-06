@@ -136,12 +136,16 @@ public class ImpostorTracker : MonoBehaviour
 
         if (!exitButton) return;
 
+        bool isLevelTwo = SceneManager.GetActiveScene().name == "LvL2";
         var label = exitButton.GetComponentInChildren<TMP_Text>(true);
-        if (label) label.text = "Play Level 2";
+        if (label) label.text = isLevelTwo ? "Exit" : "Play Level 2";
 
         if (exitButton.targetGraphic) exitButton.targetGraphic.raycastTarget = true;
         ResetButtonOnClick(exitButton);
-        exitButton.onClick.AddListener(LoadLevelTwo);
+        if (isLevelTwo)
+            exitButton.onClick.AddListener(ReturnToHome);
+        else
+            exitButton.onClick.AddListener(LoadLevelTwo);
     }
 
 
@@ -154,6 +158,19 @@ public class ImpostorTracker : MonoBehaviour
 
         var evt = new Button.ButtonClickedEvent();
         field.SetValue(button, evt);
+    }
+
+
+    void ReturnToHome()
+    {
+        var loader = FindObjectOfType<SceneLoader>(true);
+        if (loader != null)
+        {
+            loader.Load("Home");
+            return;
+        }
+
+        SceneManager.LoadScene("Home");
     }
 
 
