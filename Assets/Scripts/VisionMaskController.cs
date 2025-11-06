@@ -33,7 +33,13 @@ public class VisionMaskController : MonoBehaviour
         if (group == null)
             group = gameObject.AddComponent<CanvasGroup>();
 
+        ResetRadius();
         HideMask(); // start invisible
+    }
+
+    public void ResetRadius()
+    {
+        UpdateRadius(0.26f);
     }
 
     // Update the radius of the vision mask

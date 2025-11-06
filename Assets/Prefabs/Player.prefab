@@ -122,9 +122,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d39df01975600d14ba35eef30538845e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 12
+  moveSpeed: 6
   accel: 30
   groundY: 2
+  mudMultiplierFallback: 1
+  hitSpeedStep: 0.25
+  minHitSpeedMultiplier: 1
+  maxHitSpeedMultiplier: 6
+  logSpeed: 0
+  logInterval: 0.25
 --- !u!54 &2795566295422782352
 Rigidbody:
   m_ObjectHideFlags: 0

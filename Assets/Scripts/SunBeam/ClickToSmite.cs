@@ -169,9 +169,9 @@ void HandleCorrect(NPCDeath death, NPCIdentity id)
     SunbeamManager.Instance.Smite(death);
 
     // Gradually increase the radius by 0.2, clamped between min and max
-    if (visionMaskController != null)
+    if (visionMaskController != null && !SuppressGameState)
     {
-        float radiusChangeAmount = 0.1f; // Amount to change the radius by
+        float radiusChangeAmount = 0.05f; // Amount to change the radius by
 
         // For Correct Hits:
         visionMaskController.UpdateRadius(Mathf.Min(visionMaskController.maxRadius, visionMaskController.currentRadius + radiusChangeAmount));
@@ -202,9 +202,9 @@ void HandleWrong(NPCDeath death, NPCIdentity id)
         LivesManager.Instance.LoseLife();
 
     // Gradually decrease the radius by 0.2, clamped between min and max
-    if (visionMaskController != null)
+    if (visionMaskController != null && !SuppressGameState)
     {
-        float radiusChangeAmount = 0.1f;
+        float radiusChangeAmount = 0.05f;
         visionMaskController.UpdateRadius(Mathf.Max(visionMaskController.minRadius, visionMaskController.currentRadius - radiusChangeAmount));
     }
     else
