@@ -15,7 +15,10 @@ public class SceneLoader : MonoBehaviour {
         SceneManager.LoadScene("LvL1");
     }
     public void LoadLevel2() {
-        // You can add your unlock check here later if you want
+        if (!ProgressManager.IsLevelUnlocked(2)) {
+            Debug.LogWarning("Tried to load Level 2 before Level 1 was complete.");
+            return;
+        }
         SceneManager.LoadScene("LvL2");
     }
 }
