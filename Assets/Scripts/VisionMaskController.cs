@@ -1,16 +1,34 @@
 using UnityEngine;
+using UnityEngine.UI;  // Make sure to include this for RawImage
 
 public class VisionMaskController : MonoBehaviour
 {
     public static VisionMaskController Instance;
 
     private CanvasGroup group;
+    private Material visionMaskMaterial;
+
+    // Reference to RawImage (Vision Mask Image)
+    public RawImage visionMaskImage;
+
+    // Adjustable radius limits for penalties
+    public float maxRadius = 1f;
+    public float minRadius = 0f;
+
+    // Track the current radius
+    public float currentRadius = 0.26f; // Start with initial visible radius
 
     void Awake()
     {
         Instance = this;
 
-        // Add or find a CanvasGroup so we can control visibility easily
+        if (visionMaskImage == null)
+        {
+            visionMaskImage = GetComponent<RawImage>(); // Automatically find it if not set
+        }
+
+        visionMaskMaterial = visionMaskImage.material;
+
         group = GetComponent<CanvasGroup>();
         if (group == null)
             group = gameObject.AddComponent<CanvasGroup>();
@@ -18,7 +36,13 @@ public class VisionMaskController : MonoBehaviour
         HideMask(); // start invisible
     }
 
-    public void ShowMask()
+    // Update the radius of the vision mask
+    public void UpdateRadius(float newRadius)
+    {
+        currentRadius = Mathf.Clamp(newRadius, minRadius, maxRadius);
+        visionMaskMaterial.SetFloat("_Radius", currentRadius);
+    }
+        public void ShowMask()
     {
         group.alpha = 1f;
         group.interactable = false;

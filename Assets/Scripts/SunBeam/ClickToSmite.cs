@@ -84,6 +84,9 @@ public class ClickToSmite : MonoBehaviour
 {
     public LayerMask npcLayer; // set to NPC layer in Inspector
 
+    // Reference to VisionMaskController
+    public VisionMaskController visionMaskController;
+
     /// <summary>
     /// Optional hook that can veto hits (e.g. tutorial gating). Return true to allow the shot.
     /// </summary>
@@ -147,45 +150,71 @@ public class ClickToSmite : MonoBehaviour
         }
     }
 
-    void HandleCorrect(NPCDeath death, NPCIdentity id)
+void HandleCorrect(NPCDeath death, NPCIdentity id)
+{
+    // Disable colliders immediately so we don't double count
+    PreventDoubleHit(death);
+
+    TrackShotFired();
+
+    // ✅ Track correct hit
+    if (AnalyticsManager.I != null)
+        AnalyticsManager.I.OnCorrectHit();
+
+    // Notify that an impostor was killed
+    if (!SuppressGameState && id != null && id.isImpostor)
+        ImpostorTracker.Instance?.OnImpostorKilled();
+
+    // Beam + delete NPC
+    SunbeamManager.Instance.Smite(death);
+
+    // Gradually increase the radius by 0.2, clamped between min and max
+    if (visionMaskController != null)
     {
-        // Disable colliders immediately so we don't double count
-        PreventDoubleHit(death);
+        float radiusChangeAmount = 0.1f; // Amount to change the radius by
 
-        TrackShotFired();
+        // For Correct Hits:
+        visionMaskController.UpdateRadius(Mathf.Min(visionMaskController.maxRadius, visionMaskController.currentRadius + radiusChangeAmount));
 
-        // ✅ Track correct hit
-        if (AnalyticsManager.I != null)
-            AnalyticsManager.I.OnCorrectHit();
+    }
+    else
+    {
+        Debug.LogError("VisionMaskController is not assigned in ClickToSmite script.");
+    }
+}
 
-        // Notify that an impostor was killed
-        if (!SuppressGameState && id != null && id.isImpostor)
-            ImpostorTracker.Instance?.OnImpostorKilled();
+void HandleWrong(NPCDeath death, NPCIdentity id)
+{
+    PreventDoubleHit(death);
 
-        // Beam + delete NPC
-        SunbeamManager.Instance.Smite(death);
+    TrackShotFired();
+
+    // Optional: if you want to track total "wrong hits" separately
+    // you can add this too (your choice):
+    // if (AnalyticsManager.I != null)
+    //     AnalyticsManager.I.OnWrongHit();
+
+    // Beam + delete NPC
+    SunbeamManager.Instance.Smite(death);
+
+    // Lose a life on wrong hit
+    if (!SuppressGameState && LivesManager.Instance != null)
+        LivesManager.Instance.LoseLife();
+
+    // Gradually decrease the radius by 0.2, clamped between min and max
+    if (visionMaskController != null)
+    {
+        float radiusChangeAmount = 0.1f;
+        visionMaskController.UpdateRadius(Mathf.Max(visionMaskController.minRadius, visionMaskController.currentRadius - radiusChangeAmount));
+    }
+    else
+    {
+        Debug.LogError("VisionMaskController is not assigned in ClickToSmite script.");
     }
 
-    void HandleWrong(NPCDeath death, NPCIdentity id)
-    {
-        PreventDoubleHit(death);
+    OnHitResolved?.Invoke(id, false);
+}
 
-        TrackShotFired();
-
-        // Optional: if you want to track total "wrong hits" separately
-        // you can add this too (your choice):
-        // if (AnalyticsManager.I != null)
-        //     AnalyticsManager.I.OnWrongHit();
-
-        // Beam + delete NPC
-        SunbeamManager.Instance.Smite(death);
-
-        // Lose a life on wrong hit
-        if (!SuppressGameState && LivesManager.Instance != null)
-            LivesManager.Instance.LoseLife();
-
-        OnHitResolved?.Invoke(id, false);
-    }
 
     void PreventDoubleHit(NPCDeath death)
     {
