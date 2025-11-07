@@ -525,6 +525,7 @@ MonoBehaviour:
   visionMaskImage: {fileID: 0}
   maxRadius: 1
   minRadius: 0
+  initialRadius: 0.26
   currentRadius: 0.26
 --- !u!1 &41243376
 GameObject:
@@ -2145,7 +2146,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &177456002
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3045,6 +3046,17 @@ MonoBehaviour:
   textColor: {r: 0.9, g: 0.2, b: 0.2, a: 1}
   startScale: {x: 0.9, y: 0.9, z: 1}
   endScale: {x: 1.05, y: 1.05, z: 1}
+  hazardHoldSeconds: 1.6
+  hazardFadeSeconds: 0.9
+  hazardFontSize: 32
+  hazardReference: {fileID: 0}
+  hazardAnchor: {x: 0.5, y: 1}
+  hazardPivot: {x: 0.5, y: 1}
+  hazardOffset: {x: 0, y: -32}
+  hazardTextColor: {r: 0.9, g: 0.2, b: 0.2, a: 1}
+  hazardStartScale: {x: 0.85, y: 0.85, z: 1}
+  hazardEndScale: {x: 1, y: 1, z: 1}
+  hazardAlignment: 514
 --- !u!4 &230281258
 Transform:
   m_ObjectHideFlags: 0

@@ -4,6 +4,8 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMover : MonoBehaviour
 {
+    public static PlayerMover Active { get; private set; }
+
     public float moveSpeed = 6f;
     public float accel = 20f;
     public float groundY = 0.1f;
@@ -34,6 +36,7 @@ public bool logSpeed = false;
     void Awake()
     {
         hitSpeedMultiplier = 1f;
+        activeMudMultiplier = mudMultiplierFallback;
 
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
@@ -44,11 +47,14 @@ public bool logSpeed = false;
     void OnEnable()
     {
         ClickToSmite.OnHitResolved += HandleHitResolved;
+        Active = this;
     }
 
     void OnDisable()
     {
         ClickToSmite.OnHitResolved -= HandleHitResolved;
+        if (Active == this)
+            Active = null;
     }
 
     void Update()
@@ -108,10 +114,12 @@ public bool logSpeed = false;
             rb.velocity = Vector3.MoveTowards(vel, target, accel * Time.fixedDeltaTime);
     }
 
-    public void EnterMud(MudZone zone, float multiplier)
+    public bool EnterMud(MudZone zone, float multiplier)
     {
+        float before = activeMudMultiplier;
         mudContacts[zone] = Mathf.Clamp(multiplier, 0.1f, 1f);
         RefreshMudMultiplier();
+        return IsSlowed(activeMudMultiplier) && !IsSlowed(before);
     }
 
     public void ExitMud(MudZone zone)
@@ -119,6 +127,16 @@ public bool logSpeed = false;
         if (mudContacts.Remove(zone))
             RefreshMudMultiplier();
     }
+
+    bool IsSlowed(float value)
+    {
+        const float eps = 0.001f;
+        float baseline = Mathf.Max(0.1f, mudMultiplierFallback);
+        return value < baseline - eps;
+    }
+
+    public static bool IsActivePlayer(PlayerMover mover)
+        => mover != null && Active == mover && mover.isActiveAndEnabled;
 
     void RefreshMudMultiplier()
     {
@@ -135,12 +153,16 @@ public bool logSpeed = false;
         activeMudMultiplier = slowest;
     }
 
-    public void ApplyStun(float duration)
+    public bool ApplyStun(float duration)
     {
-        stunUntil = Mathf.Max(stunUntil, Time.time + Mathf.Max(0f, duration));
+        float clamped = Mathf.Max(0f, duration);
+        float newUntil = Mathf.Max(stunUntil, Time.time + clamped);
+        bool applied = newUntil > stunUntil && clamped > 0f;
+        stunUntil = newUntil;
         desiredVel = Vector3.zero;
         if (rb != null)
             rb.velocity = Vector3.zero;
+        return applied;
     }
 
     void HandleHitResolved(NPCIdentity identity, bool correct)
