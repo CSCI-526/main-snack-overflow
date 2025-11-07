@@ -25,7 +25,7 @@ public static class HazardHintManager {
         if (Time.unscaledTime < nextMudHintTime)
             return;
         nextMudHintTime = Time.unscaledTime + cooldown;
-        KillTextController.Instance?.ShowHazard("Watch out! sticky mud slows you down!");
+        KillTextController.Instance?.ShowHazard("Eww—mud bath!\nSpeed temporarily reduced!");
     }
 
     public static void TryShowPotholeHint(float duration) {
@@ -39,7 +39,7 @@ public static class HazardHintManager {
         string seconds = duration % 1f == 0f
             ? Mathf.RoundToInt(duration).ToString()
             : duration.ToString("0.0");
-        KillTextController.Instance?.ShowHazard($"Oh that's a pothole, timeout for {seconds}s!");
+        KillTextController.Instance?.ShowHazard($"Ouch! Straight into a pothole!\nRecovering in {seconds}s!");
     }
 
     static bool IsLevelTwo() => SceneManager.GetActiveScene().name == "LvL2";

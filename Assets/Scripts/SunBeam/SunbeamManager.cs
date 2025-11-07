@@ -33,14 +33,14 @@ public class SunbeamManager : MonoBehaviour
             if (isImpostor)
             {
                 // Center-screen popup for ~1–2s (your ImposterKilledText/Popup controller)
-                KillTextController.Instance?.Show("Imposter Killed");
+                KillTextController.Instance?.Show("Imposter Down!\nEyes Sharp, Feet Faster!");
                 // (Optional) score/remaining-impostors bookkeeping can go here too
                 // ImpostorTracker.Instance?.OnImpostorKilled();
             }
             else
             {
                 // Optional feedback when player taps a civilian
-                KillTextController.Instance?.Show("Civilian Killed!");
+                KillTextController.Instance?.Show("Civilian Down...!\nSpeed Drop, Vision Blur!");
             }
 
             // Finally, do the shrink-and-destroy

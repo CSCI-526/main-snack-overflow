@@ -527,6 +527,7 @@ MonoBehaviour:
   minRadius: 0
   initialRadius: 0.26
   currentRadius: 0.26
+  minRadiusWhileAlive: 0.08
 --- !u!1 &41243376
 GameObject:
   m_ObjectHideFlags: 0
@@ -2163,8 +2164,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 200, y: 50}
+  m_AnchoredPosition: {x: -142, y: 0}
+  m_SizeDelta: {x: 900, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &177456003
 MonoBehaviour:
@@ -2213,14 +2214,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 72
-  m_fontSizeBase: 72
+  m_fontSize: 80
+  m_fontSizeBase: 80
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -3048,15 +3049,10 @@ MonoBehaviour:
   endScale: {x: 1.05, y: 1.05, z: 1}
   hazardHoldSeconds: 1.6
   hazardFadeSeconds: 0.9
-  hazardFontSize: 32
-  hazardReference: {fileID: 0}
-  hazardAnchor: {x: 0.5, y: 1}
-  hazardPivot: {x: 0.5, y: 1}
-  hazardOffset: {x: 0, y: -32}
+  hazardFontSize: 70
   hazardTextColor: {r: 0.9, g: 0.2, b: 0.2, a: 1}
   hazardStartScale: {x: 0.85, y: 0.85, z: 1}
   hazardEndScale: {x: 1, y: 1, z: 1}
-  hazardAlignment: 514
 --- !u!4 &230281258
 Transform:
   m_ObjectHideFlags: 0
@@ -3065,8 +3061,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 230281256}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 303.8108, y: 229.23822, z: 0}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -351, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

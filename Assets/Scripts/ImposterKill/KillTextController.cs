@@ -19,11 +19,10 @@ public class KillTextController : MonoBehaviour
     [Header("Hazard Style")]
     public float hazardHoldSeconds = 1.6f;
     public float hazardFadeSeconds = 0.9f;
-    public float hazardFontSize = 40f;
+    public float hazardFontSize = 60f;
     public Color hazardTextColor = new Color(0.9f, 0.2f, 0.2f, 1f);
     public Vector3 hazardStartScale = new Vector3(0.85f, 0.85f, 1f);
     public Vector3 hazardEndScale = new Vector3(1f, 1f, 1f);
-    public TextAlignmentOptions hazardAlignment = TextAlignmentOptions.Center;
 
     Coroutine running;
     RectTransform rect;
@@ -129,12 +128,12 @@ public class KillTextController : MonoBehaviour
         }
         else
         {
-            rect.anchorMin = defaultAnchorMin;
-            rect.anchorMax = defaultAnchorMax;
-            rect.pivot = defaultPivot;
-            rect.anchoredPosition = defaultAnchoredPos;
+            rect.anchorMin = new Vector2(0.5f, defaultAnchorMin.y);
+            rect.anchorMax = new Vector2(0.5f, defaultAnchorMax.y);
+            rect.pivot = new Vector2(0.5f, defaultPivot.y);
+            rect.anchoredPosition = new Vector2(0f, defaultAnchoredPos.y);
             label.fontSize = hazardFontSize > 0f ? hazardFontSize : defaultFontSize;
-            label.alignment = hazardAlignment;
+            label.alignment = TextAlignmentOptions.Center;
         }
     }
 
