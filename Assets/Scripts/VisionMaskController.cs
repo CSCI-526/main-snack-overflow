@@ -15,8 +15,9 @@ public class VisionMaskController : MonoBehaviour
     public float maxRadius = 1f;
     public float minRadius = 0f;
 
-    // Track the current radius
-    public float currentRadius = 0.26f; // Start with initial visible radius
+    [Header("Radius")]
+    public float initialRadius = 0.26f;
+    public float currentRadius = 0.26f;
 
     void Awake()
     {
@@ -33,13 +34,14 @@ public class VisionMaskController : MonoBehaviour
         if (group == null)
             group = gameObject.AddComponent<CanvasGroup>();
 
+        currentRadius = initialRadius;
         ResetRadius();
         HideMask(); // start invisible
     }
 
     public void ResetRadius()
     {
-        UpdateRadius(0.26f);
+        UpdateRadius(initialRadius);
     }
 
     // Update the radius of the vision mask
@@ -48,7 +50,10 @@ public class VisionMaskController : MonoBehaviour
         currentRadius = Mathf.Clamp(newRadius, minRadius, maxRadius);
         visionMaskMaterial.SetFloat("_Radius", currentRadius);
     }
-        public void ShowMask()
+
+    public RectTransform MaskRect => visionMaskImage ? visionMaskImage.rectTransform : null;
+
+    public void ShowMask()
     {
         group.alpha = 1f;
         group.interactable = false;

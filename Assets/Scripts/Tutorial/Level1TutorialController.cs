@@ -12,17 +12,20 @@ using TMPro;
 [DefaultExecutionOrder(200)]
 public class Level1TutorialController : MonoBehaviour
 {
+    public static Level1TutorialController Instance { get; private set; }
+
     enum Step
     {
         Inactive,
         AwaitMovement,
         ClickImpostor,
+        VisionReview,
         ShowCivilian,
         Finished
     }
 
-    static readonly Vector2 MessageSizeLarge = new(620f, 150f);
-    static readonly Vector2 MessageSizeMedium = new(540f, 130f);
+static readonly Vector2 MessageSizeLarge = new(660f, 190f);
+static readonly Vector2 MessageSizeMedium = new(600f, 160f);
     static readonly Vector2 MessageSizeSmall = new(480f, 120f);
 
     static readonly Vector2 MovementAnchor = new(0.5f, 0.82f);
@@ -79,12 +82,14 @@ TutorialDrifter civilianDrifter;
 string civilianColorDisplayName = "civilian";
 string civilianColorHex = "#F48028";
 string impostorColorHex = "#FF4F4F";
+TutorialVisionHint visionHint;
 
     NPCIdentity targetImpostor;
     NPCIdentity targetCivilian;
 
     void Awake()
     {
+        Instance = this;
         canvas = GetComponent<Canvas>();
         canvasRect = GetComponent<RectTransform>();
     }
@@ -100,6 +105,14 @@ string impostorColorHex = "#FF4F4F";
         ClickToSmite.OnHitResolved -= HandleShotResolved;
         ClickToSmite.SuppressGameState = false;
     }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    public bool IsTutorialActive => tutorialActive;
 
     public bool TryBeginTutorial(InstructionsManager mgr)
     {
@@ -117,6 +130,7 @@ string impostorColorHex = "#FF4F4F";
 
         Time.timeScale = 1f;
         instructions.SetVisionMaskActive(true);
+        VisionMaskController.Instance?.ResetRadius();
 
         if (!SetupTutorialActors())
         {
@@ -138,7 +152,116 @@ string impostorColorHex = "#FF4F4F";
         ShowMovementMessage();
         continueButton.gameObject.SetActive(false);
         arrowRoot.gameObject.SetActive(false);
-        RefreshOverlayInteractivity();
+
+        // Vision hint overlay (placed near vision circle edge)
+        var hintGO = new GameObject("VisionHint", typeof(RectTransform), typeof(Image));
+        var hintRect = hintGO.GetComponent<RectTransform>();
+        hintRect.SetParent(overlayRoot, false);
+        hintRect.anchorMin = Vector2.one;
+        hintRect.anchorMax = Vector2.one;
+        hintRect.pivot = new Vector2(1f, 1f);
+        hintRect.anchoredPosition = new Vector2(-60f, -40f);
+        hintRect.sizeDelta = new Vector2(460f, 210f);
+
+        var hintBackground = hintGO.GetComponent<Image>();
+        hintBackground.sprite = GetSolidSprite();
+        hintBackground.color = new Color(0f, 0f, 0f, 0.88f);
+        hintBackground.raycastTarget = false;
+
+        var hintArrowGroup = new GameObject("ArrowGroup", typeof(RectTransform)).GetComponent<RectTransform>();
+        hintArrowGroup.SetParent(hintRect, false);
+        hintArrowGroup.anchorMin = new Vector2(0f, 0.5f);
+        hintArrowGroup.anchorMax = new Vector2(0f, 0.5f);
+        hintArrowGroup.pivot = new Vector2(0f, 0.5f);
+        hintArrowGroup.anchoredPosition = new Vector2(20f, -64f);
+        hintArrowGroup.sizeDelta = Vector2.zero;
+
+        var hintShaftGO = new GameObject("Shaft", typeof(RectTransform), typeof(Image));
+        var hintShaftRect = hintShaftGO.GetComponent<RectTransform>();
+        hintShaftRect.SetParent(hintArrowGroup, false);
+        hintShaftRect.anchorMin = new Vector2(0f, 0.5f);
+        hintShaftRect.anchorMax = new Vector2(0f, 0.5f);
+        hintShaftRect.pivot = new Vector2(0f, 0.5f);
+        hintShaftRect.sizeDelta = new Vector2(56f, 6f);
+        hintShaftRect.anchoredPosition = Vector2.zero;
+
+        var hintShaftImage = hintShaftGO.GetComponent<Image>();
+        hintShaftImage.sprite = GetSolidSprite();
+        hintShaftImage.color = Color.white;
+        hintShaftImage.raycastTarget = false;
+
+        var hintHeadGO = new GameObject("Head", typeof(RectTransform), typeof(Image));
+        var hintHeadRect = hintHeadGO.GetComponent<RectTransform>();
+        hintHeadRect.SetParent(hintArrowGroup, false);
+        hintHeadRect.anchorMin = new Vector2(0f, 0.5f);
+        hintHeadRect.anchorMax = new Vector2(0f, 0.5f);
+        hintHeadRect.pivot = new Vector2(0.5f, 0.5f);
+        hintHeadRect.sizeDelta = new Vector2(18f, 18f);
+        hintHeadRect.anchoredPosition = new Vector2(hintShaftRect.sizeDelta.x, 0f);
+        hintHeadRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
+
+        var hintHeadImage = hintHeadGO.GetComponent<Image>();
+        hintHeadImage.sprite = GetSolidSprite();
+        hintHeadImage.color = Color.white;
+        hintHeadImage.raycastTarget = false;
+
+        var hintTextGO = new GameObject("Label", typeof(RectTransform));
+        var hintTextRect = hintTextGO.GetComponent<RectTransform>();
+        hintTextRect.SetParent(hintRect, false);
+        hintTextRect.anchorMin = new Vector2(0f, 1f);
+        hintTextRect.anchorMax = new Vector2(1f, 1f);
+        hintTextRect.pivot = new Vector2(0.5f, 1f);
+        hintTextRect.offsetMin = new Vector2(36f, -120f);
+        hintTextRect.offsetMax = new Vector2(-36f, -20f);
+
+        var hintTMP = hintTextGO.AddComponent<TextMeshProUGUI>();
+        hintTMP.font = GetFontAsset();
+        hintTMP.fontSize = 34f;
+        hintTMP.alignment = TextAlignmentOptions.MidlineLeft;
+        hintTMP.color = Color.white;
+        hintTMP.enableWordWrapping = true;
+        hintTMP.richText = true;
+        hintTMP.raycastTarget = false;
+
+        var hintButtonGO = new GameObject("ContinueButton", typeof(RectTransform));
+        var hintButtonRect = hintButtonGO.GetComponent<RectTransform>();
+        hintButtonRect.SetParent(hintRect, false);
+        hintButtonRect.anchorMin = new Vector2(0.5f, 0f);
+        hintButtonRect.anchorMax = new Vector2(0.5f, 0f);
+        hintButtonRect.pivot = new Vector2(0.5f, 0f);
+        hintButtonRect.anchoredPosition = new Vector2(0f, 20f);
+        hintButtonRect.sizeDelta = new Vector2(240f, 60f);
+
+        var hintButtonImage = hintButtonGO.AddComponent<Image>();
+        hintButtonImage.sprite = GetSolidSprite();
+        hintButtonImage.color = new Color(0.9f, 0.25f, 0.28f, 0.95f);
+
+        var hintButtonShadow = hintButtonGO.AddComponent<Shadow>();
+        hintButtonShadow.effectDistance = new Vector2(0f, -3f);
+        hintButtonShadow.effectColor = new Color(0f, 0f, 0f, 0.5f);
+
+        var hintButton = hintButtonGO.AddComponent<Button>();
+
+        var hintButtonLabelGO = new GameObject("Text", typeof(RectTransform));
+        var hintButtonLabelRect = hintButtonLabelGO.GetComponent<RectTransform>();
+        hintButtonLabelRect.SetParent(hintButtonGO.transform, false);
+        hintButtonLabelRect.anchorMin = Vector2.zero;
+        hintButtonLabelRect.anchorMax = Vector2.one;
+        hintButtonLabelRect.offsetMin = Vector2.zero;
+        hintButtonLabelRect.offsetMax = Vector2.zero;
+
+        var hintButtonText = hintButtonLabelGO.AddComponent<TextMeshProUGUI>();
+        hintButtonText.font = GetFontAsset();
+        hintButtonText.fontSize = 30f;
+        hintButtonText.alignment = TextAlignmentOptions.Center;
+        hintButtonText.color = Color.white;
+        hintButtonText.text = "Continue";
+        hintButtonText.raycastTarget = false;
+
+        visionHint = hintGO.AddComponent<TutorialVisionHint>();
+        visionHint.Configure(hintRect, hintTMP, hintArrowGroup, hintShaftRect, hintHeadRect, hintTextRect, hintButton);
+        visionHint.circlePadding = 0f;
+        visionHint.Hide();
 
         return true;
     }
@@ -373,8 +496,8 @@ string impostorColorHex = "#FF4F4F";
         continueButton.gameObject.SetActive(true);
         continueButton.interactable = true;
         RefreshOverlayInteractivity();
-
         MaintainCivilianArrow();
+        ShowCivilianVisionPrompt();
     }
 
     void MaintainCivilianArrow()
@@ -476,7 +599,8 @@ string impostorColorHex = "#FF4F4F";
 
             targetImpostor = null;
             arrowRoot.gameObject.SetActive(false);
-            AdvanceToCivilianStep();
+            ShowVisionGrowthPrompt();
+            return;
         }
     }
 
@@ -488,6 +612,70 @@ string impostorColorHex = "#FF4F4F";
             impostorDrifter.enabled = false;
         if (tutorialCivilianId == id && civilianDrifter)
             civilianDrifter.enabled = false;
+    }
+
+    void ShowCivilianVisionPrompt()
+    {
+        var maskController = VisionMaskController.Instance;
+        RectTransform maskRect = maskController ? maskController.MaskRect : null;
+
+        if (maskController)
+            maskController.UpdateRadius(maskController.initialRadius);
+
+        float radius = maskController ? maskController.currentRadius : 0.26f;
+
+        if (visionHint != null && maskRect != null)
+        {
+            visionHint.Show(
+                increase: false,
+                maskRect: maskRect,
+                radius: radius,
+                customMessage: "Killing civilians shrinks your vision across the landscape.",
+                requireContinue: false,
+                continueCallback: null,
+                persistent: true);
+        }
+    }
+
+    void ShowVisionGrowthPrompt()
+    {
+        currentStep = Step.VisionReview;
+
+        continueButton.gameObject.SetActive(false);
+        continueButton.interactable = false;
+        if (overlayGroup)
+        {
+            overlayGroup.interactable = true;
+            overlayGroup.blocksRaycasts = true;
+        }
+        visionHint?.Hide();
+        SetMessageVisible(false);
+
+        var maskRect = VisionMaskController.Instance ? VisionMaskController.Instance.MaskRect : null;
+        float radius = VisionMaskController.Instance ? VisionMaskController.Instance.currentRadius : 0.26f;
+
+        if (visionHint != null && maskRect != null)
+        {
+            visionHint.Show(
+                increase: true,
+                maskRect: maskRect,
+                radius: radius,
+                customMessage: "Killing impostors expands your vision across the landscape.",
+                requireContinue: true,
+                continueCallback: OnVisionGrowthContinue);
+        }
+        else
+        {
+            OnVisionGrowthContinue();
+        }
+    }
+
+    void OnVisionGrowthContinue()
+    {
+        SetMessageVisible(true);
+        visionHint?.Hide();
+        RefreshOverlayInteractivity();
+        AdvanceToCivilianStep();
     }
 
     void Update()
@@ -505,6 +693,9 @@ string impostorColorHex = "#FF4F4F";
                 break;
             case Step.ClickImpostor:
                 MaintainImpostorArrow();
+                break;
+            case Step.VisionReview:
+                // waiting for player acknowledgement
                 break;
             case Step.ShowCivilian:
                 MaintainCivilianArrow();
@@ -528,6 +719,9 @@ string impostorColorHex = "#FF4F4F";
         currentStep = Step.Finished;
         Time.timeScale = 1f;
 
+        visionHint?.Hide();
+        VisionMaskController.Instance?.ResetRadius();
+
         if (continueButton)
             continueButton.gameObject.SetActive(false);
         RefreshOverlayInteractivity();
@@ -539,6 +733,7 @@ string impostorColorHex = "#FF4F4F";
 
         ClearTutorialActors();
         ShowOverlay(false);
+        SetMessageVisible(true);
 
         if (ImpostorTracker.Instance != null)
             ImpostorTracker.Instance.ResetCount();
@@ -562,8 +757,11 @@ string impostorColorHex = "#FF4F4F";
         tutorialActive = false;
         currentStep = Step.Inactive;
         ShowOverlay(false);
+        SetMessageVisible(true);
         ClickToSmite.SuppressGameState = false;
         ClearTutorialActors();
+        visionHint?.Hide();
+        VisionMaskController.Instance?.ResetRadius();
 
         if (ImpostorTracker.Instance != null)
             ImpostorTracker.Instance.ResetCount();
@@ -588,6 +786,7 @@ string impostorColorHex = "#FF4F4F";
             arrowRoot.gameObject.SetActive(false);
 
         RefreshOverlayInteractivity();
+        visionHint?.Hide();
     }
 
     bool FilterHits(NPCIdentity id)
@@ -599,6 +798,7 @@ string impostorColorHex = "#FF4F4F";
         {
             Step.AwaitMovement => false,
             Step.ClickImpostor => id != null && targetImpostor != null && id == targetImpostor,
+            Step.VisionReview => false,
             Step.ShowCivilian => false,
             _ => true,
         };
@@ -670,14 +870,14 @@ string impostorColorHex = "#FF4F4F";
         var textGO = new GameObject("Message", typeof(RectTransform));
         var textRect = textGO.GetComponent<RectTransform>();
         textRect.SetParent(messagePanel, false);
-        textRect.anchorMin = new Vector2(0.1f, 0.12f);
-        textRect.anchorMax = new Vector2(0.9f, 0.88f);
+        textRect.anchorMin = new Vector2(0.07f, 0.08f);
+        textRect.anchorMax = new Vector2(0.93f, 0.92f);
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
 
         messageText = textGO.AddComponent<TextMeshProUGUI>();
         messageText.font = GetFontAsset();
-        messageText.fontSize = 30f;
+        messageText.fontSize = 34f;
         messageText.alignment = TextAlignmentOptions.Center;
         messageText.color = Color.white;
         messageText.raycastTarget = false;
@@ -752,12 +952,12 @@ string impostorColorHex = "#FF4F4F";
 
         var headGO = new GameObject("Head", typeof(RectTransform));
         arrowHeadRect = headGO.GetComponent<RectTransform>();
-arrowHeadRect.SetParent(arrowRoot, false);
-arrowHeadRect.anchorMin = new Vector2(0f, 0.5f);
-arrowHeadRect.anchorMax = new Vector2(0f, 0.5f);
-arrowHeadRect.pivot = new Vector2(0.5f, 0.5f);
+        arrowHeadRect.SetParent(arrowRoot, false);
+        arrowHeadRect.anchorMin = new Vector2(0f, 0.5f);
+        arrowHeadRect.anchorMax = new Vector2(0f, 0.5f);
+        arrowHeadRect.pivot = new Vector2(0.5f, 0.5f);
         arrowHeadRect.anchoredPosition = new Vector2(arrowHeadWidth * 0.5f, 0f);
-arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
+        arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
         arrowHeadRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
 
         var headImage = headGO.AddComponent<Image>();
@@ -793,12 +993,13 @@ arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
 
     void ShowMovementMessage()
     {
-        string title = "<size=32><b>Move Around</b></size>";
-        string body = "<size=24>Use <b>W A S D</b> or the <b>Arrow Keys</b> to walk a little.</size>";
-        string hint = "<size=22>Take a few steps to continue.</size>";
+        string message =
+            "<b>Move Around</b>\n" +
+            "Use <b>W A S D</b> or the <b>Arrow Keys</b> to walk.\n" +
+            "Take a few steps to continue.";
 
         SetMessage(
-            title + "\n" + body + "\n" + hint,
+            message,
             MovementAnchor,
             MovementOffset,
             MessageSizeMedium);
@@ -806,13 +1007,9 @@ arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
 
     void ShowImpostorMessage()
     {
-        string title = $"<size=32><b>Find the <color=#{impostorColorHex}>Red Impostor</color></b></size>";
-        string body = $"<size=24>Follow the arrow and <b>left-click</b> the <color=#{impostorColorHex}>red impostor</color>.</size>";
-        string hint = null;
-
-        var message = title + "\n" + body;
-        if (!string.IsNullOrEmpty(hint))
-            message += "\n" + hint;
+        string message =
+            $"<b>Find the <color=#{impostorColorHex}>Red Impostor</color></b>\n" +
+            $"Follow the arrow and <b>left-click</b> the <color=#{impostorColorHex}>red impostor</color>.";
 
         SetMessage(
             message,
@@ -823,12 +1020,13 @@ arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
 
     void ShowCivilianMessage()
     {
-        string title = $"<size=32><b>Leave <color=#{civilianColorHex}>Civilians</color> Alone</b></size>";
-        string body = $"<size=24>This <color=#{civilianColorHex}>orange civilian</color> is harmless. Do <b>not</b> click them.</size>";
-        string hint = "<size=22>Press Continue to start the real mission.</size>";
+        string message =
+            $"<b>Leave <color=#{civilianColorHex}>Civilians</color> Alone</b>\n" +
+            $"If a non-player character is <color=#{impostorColorHex}>not red</color>, do <b>not</b> click them.\n" +
+            "Press Continue to begin.";
 
         SetMessage(
-            title + "\n" + body + "\n" + hint,
+            message,
             CivilianAnchor,
             CivilianOffset,
             MessageSizeLarge);
@@ -839,12 +1037,19 @@ arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
         if (!messagePanel || !messageText)
             return;
 
+        messagePanel.gameObject.SetActive(true);
         messagePanel.anchorMin = anchor;
         messagePanel.anchorMax = anchor;
         messagePanel.anchoredPosition = offset;
         messagePanel.sizeDelta = size;
 
         messageText.text = text;
+    }
+
+    void SetMessageVisible(bool visible)
+    {
+        if (messagePanel)
+            messagePanel.gameObject.SetActive(visible);
     }
 
     static bool IsLevelOneScene()

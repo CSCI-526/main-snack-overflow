@@ -102,6 +102,12 @@ public class ClickToSmite : MonoBehaviour
     /// </summary>
     public static event Action<NPCIdentity, bool> OnHitResolved;
 
+    void Start()
+    {
+        if (visionMaskController == null)
+            visionMaskController = VisionMaskController.Instance;
+    }
+
     void Update()
     {
         if (Input.GetMouseButtonDown(0))
@@ -150,70 +156,48 @@ public class ClickToSmite : MonoBehaviour
         }
     }
 
-void HandleCorrect(NPCDeath death, NPCIdentity id)
-{
-    // Disable colliders immediately so we don't double count
-    PreventDoubleHit(death);
-
-    TrackShotFired();
-
-    // ✅ Track correct hit
-    if (AnalyticsManager.I != null)
-        AnalyticsManager.I.OnCorrectHit();
-
-    // Notify that an impostor was killed
-    if (!SuppressGameState && id != null && id.isImpostor)
-        ImpostorTracker.Instance?.OnImpostorKilled();
-
-    // Beam + delete NPC
-    SunbeamManager.Instance.Smite(death);
-
-    // Gradually increase the radius by 0.2, clamped between min and max
-    if (visionMaskController != null && !SuppressGameState)
+    void HandleCorrect(NPCDeath death, NPCIdentity id)
     {
-        float radiusChangeAmount = 0.05f; // Amount to change the radius by
+        // Disable colliders immediately so we don't double count
+        PreventDoubleHit(death);
 
-        // For Correct Hits:
-        visionMaskController.UpdateRadius(Mathf.Min(visionMaskController.maxRadius, visionMaskController.currentRadius + radiusChangeAmount));
+        TrackShotFired();
 
-    }
-    else
-    {
-        Debug.LogError("VisionMaskController is not assigned in ClickToSmite script.");
-    }
-}
+        // ✅ Track correct hit
+        if (AnalyticsManager.I != null)
+            AnalyticsManager.I.OnCorrectHit();
 
-void HandleWrong(NPCDeath death, NPCIdentity id)
-{
-    PreventDoubleHit(death);
+        // Notify that an impostor was killed
+        if (!SuppressGameState && id != null && id.isImpostor)
+            ImpostorTracker.Instance?.OnImpostorKilled();
 
-    TrackShotFired();
+        // Beam + delete NPC
+        SunbeamManager.Instance.Smite(death);
 
-    // Optional: if you want to track total "wrong hits" separately
-    // you can add this too (your choice):
-    // if (AnalyticsManager.I != null)
-    //     AnalyticsManager.I.OnWrongHit();
-
-    // Beam + delete NPC
-    SunbeamManager.Instance.Smite(death);
-
-    // Lose a life on wrong hit
-    if (!SuppressGameState && LivesManager.Instance != null)
-        LivesManager.Instance.LoseLife();
-
-    // Gradually decrease the radius by 0.2, clamped between min and max
-    if (visionMaskController != null && !SuppressGameState)
-    {
-        float radiusChangeAmount = 0.05f;
-        visionMaskController.UpdateRadius(Mathf.Max(visionMaskController.minRadius, visionMaskController.currentRadius - radiusChangeAmount));
-    }
-    else
-    {
-        Debug.LogError("VisionMaskController is not assigned in ClickToSmite script.");
+        AdjustVision(true);
     }
 
-    OnHitResolved?.Invoke(id, false);
-}
+    void HandleWrong(NPCDeath death, NPCIdentity id)
+    {
+        PreventDoubleHit(death);
+
+        TrackShotFired();
+
+        // Optional: if you want to track total "wrong hits" separately
+        // if (AnalyticsManager.I != null)
+        //     AnalyticsManager.I.OnWrongHit();
+
+        // Beam + delete NPC
+        SunbeamManager.Instance.Smite(death);
+
+        // Lose a life on wrong hit
+        if (!SuppressGameState && LivesManager.Instance != null)
+            LivesManager.Instance.LoseLife();
+
+        AdjustVision(false);
+
+        OnHitResolved?.Invoke(id, false);
+    }
 
 
     void PreventDoubleHit(NPCDeath death)
@@ -227,5 +211,31 @@ void HandleWrong(NPCDeath death, NPCIdentity id)
     {
         if (AnalyticsManager.I != null)
             AnalyticsManager.I.OnShotFired();
+    }
+
+    void AdjustVision(bool increase)
+    {
+        if (visionMaskController == null)
+        {
+            Debug.LogWarning("VisionMaskController is not assigned in ClickToSmite.");
+            return;
+        }
+
+        float delta = increase ? 0.15f : -0.15f;
+        float target = visionMaskController.currentRadius + delta;
+        visionMaskController.UpdateRadius(target);
+
+        bool tutorialHandling = Level1TutorialController.Instance != null && Level1TutorialController.Instance.IsTutorialActive;
+        if (!tutorialHandling)
+            ShowVisionPrompt(increase, visionMaskController.currentRadius);
+    }
+
+    void ShowVisionPrompt(bool increase, float radius)
+    {
+        if (TutorialVisionHint.Instance == null || visionMaskController == null)
+            return;
+        var maskRect = visionMaskController.MaskRect;
+        if (maskRect == null) return;
+        TutorialVisionHint.Instance.Show(increase, maskRect, radius);
     }
 }
