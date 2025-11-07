@@ -359,11 +359,11 @@ public class SpawnManager : MonoBehaviour
     public Transform npcsParent;
     public Transform playerParent;
 
-    const string LevelOneSceneName = "LvL1";
-    static readonly string[] LevelOneWarmColorKeywords = { "raspberry", "carmine", "tomato" };
+    static readonly string[] RedFocusScenes = { "LvL1", "LvL2" };
+    static readonly string[] RedFocusWarmColorKeywords = { "raspberry", "carmine", "tomato", "pink", "magenta", "orange" };
 
-    int[] levelOneCivilianColorIdsCache;
-    int levelOneImpostorColorIdCache = -2;
+    int[] redFocusCivilianColorIdsCache;
+    int redFocusImpostorColorIdCache = -2;
 
     readonly List<Vector3> usedSpawnPositions = new List<Vector3>();
 
@@ -383,8 +383,8 @@ public class SpawnManager : MonoBehaviour
     // -----------------------------
     public void StartSpawning()
     {
-        levelOneCivilianColorIdsCache = null;
-        levelOneImpostorColorIdCache = -2;
+        redFocusCivilianColorIdsCache = null;
+        redFocusImpostorColorIdCache = -2;
         usedSpawnPositions.Clear();
         SpawnPlayer();
         SpawnCivilians();
@@ -444,9 +444,9 @@ public class SpawnManager : MonoBehaviour
         var pairs = GameRoundState.Instance.allowedPairs;
         if (pairs.Length == 0) return;
 
-        bool isLevelOne = IsLevelOneScene();
-        int impostorsToSpawn = isLevelOne ? 10 : impostorCount;
-        int impostorColorId = isLevelOne ? DetermineLevelOneImpostorColorId() : -1;
+        bool forceRedRules = IsRedFocusScene();
+        int impostorsToSpawn = forceRedRules ? 10 : impostorCount;
+        int impostorColorId = forceRedRules ? DetermineRedFocusImpostorColorId() : -1;
 
         for (int i = 0; i < impostorsToSpawn; i++)
         {
@@ -461,7 +461,7 @@ public class SpawnManager : MonoBehaviour
             ImpostorTracker.Instance?.RegisterImpostor();
 
             // Assign impostor identity (true = impostor)
-            int appliedColor = isLevelOne && impostorColorId >= 0 ? impostorColorId : pair.colorId;
+            int appliedColor = forceRedRules && impostorColorId >= 0 ? impostorColorId : pair.colorId;
             ApplyNPCIdentity(npc, true, pair.shape, appliedColor);
 
             // Create a unique runtime path for this impostor
@@ -491,67 +491,74 @@ public class SpawnManager : MonoBehaviour
         if (!palette || palette.Count == 0)
             return 0;
 
-        if (!IsLevelOneScene())
+        if (!IsRedFocusScene())
             return Random.Range(0, palette.Count);
 
-        var warmColors = GetLevelOneCivilianColorIds();
+        var warmColors = GetRedFocusCivilianColorIds();
         if (warmColors.Length == 0)
             return Random.Range(0, palette.Count);
 
         return warmColors[Random.Range(0, warmColors.Length)];
     }
 
-    int DetermineLevelOneImpostorColorId()
+    int DetermineRedFocusImpostorColorId()
     {
-        if (levelOneImpostorColorIdCache != -2)
-            return levelOneImpostorColorIdCache;
+        if (redFocusImpostorColorIdCache != -2)
+            return redFocusImpostorColorIdCache;
 
         if (!palette || palette.Count == 0)
         {
-            levelOneImpostorColorIdCache = -1;
-            return levelOneImpostorColorIdCache;
+            redFocusImpostorColorIdCache = -1;
+            return redFocusImpostorColorIdCache;
         }
 
         for (int i = 0; i < palette.Count; i++)
         {
             if (NameMatchesKeyword(palette.GetName(i), "red"))
             {
-                levelOneImpostorColorIdCache = i;
-                return levelOneImpostorColorIdCache;
+                redFocusImpostorColorIdCache = i;
+                return redFocusImpostorColorIdCache;
             }
         }
 
-        levelOneImpostorColorIdCache = 0;
-        return levelOneImpostorColorIdCache;
+        redFocusImpostorColorIdCache = 0;
+        return redFocusImpostorColorIdCache;
     }
 
-    int[] GetLevelOneCivilianColorIds()
+    int[] GetRedFocusCivilianColorIds()
     {
-        if (levelOneCivilianColorIdsCache != null)
-            return levelOneCivilianColorIdsCache;
+        if (redFocusCivilianColorIdsCache != null)
+            return redFocusCivilianColorIdsCache;
 
         if (!palette || palette.Count == 0)
         {
-            levelOneCivilianColorIdsCache = Array.Empty<int>();
-            return levelOneCivilianColorIdsCache;
+            redFocusCivilianColorIdsCache = Array.Empty<int>();
+            return redFocusCivilianColorIdsCache;
         }
 
         var matches = new List<int>();
         for (int i = 0; i < palette.Count; i++)
         {
             string name = palette.GetName(i);
-            if (NameMatchesAnyKeyword(name, LevelOneWarmColorKeywords))
+            if (NameMatchesAnyKeyword(name, RedFocusWarmColorKeywords))
                 matches.Add(i);
         }
 
-        levelOneCivilianColorIdsCache = matches.ToArray();
-        return levelOneCivilianColorIdsCache;
+        redFocusCivilianColorIdsCache = matches.ToArray();
+        return redFocusCivilianColorIdsCache;
     }
 
-    bool IsLevelOneScene()
+    bool IsRedFocusScene()
     {
         var scene = SceneManager.GetActiveScene();
-        return scene.IsValid() && scene.name == LevelOneSceneName;
+        if (!scene.IsValid()) return false;
+        var currentName = scene.name;
+        for (int i = 0; i < RedFocusScenes.Length; i++)
+        {
+            if (string.Equals(currentName, RedFocusScenes[i], StringComparison.Ordinal))
+                return true;
+        }
+        return false;
     }
 
     static bool NameMatchesAnyKeyword(string name, string[] keywords)
