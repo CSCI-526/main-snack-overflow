@@ -76,11 +76,19 @@ public class PauseRestartUI : MonoBehaviour
         }
     }
 
-    void RestartGame()
+    void ExitToHome()
     {
         Time.timeScale = 1f;
-        if (timer) timer.Retry();
-        else SceneManager.LoadScene(SceneManager.GetActiveScene().name, LoadSceneMode.Single);
+        if (timer) timer.StopTimer();
+
+        var loader = FindObjectOfType<SceneLoader>(true);
+        if (loader != null)
+        {
+            loader.Load("Home");
+            return;
+        }
+
+        SceneManager.LoadScene("Home", LoadSceneMode.Single);
     }
 
     
@@ -97,7 +105,7 @@ public class PauseRestartUI : MonoBehaviour
 
         UnwireButtons();
         if (pauseButton) pauseButton.onClick.AddListener(TogglePause);
-        if (exitButton)  exitButton.onClick.AddListener(RestartGame);
+        if (exitButton)  exitButton.onClick.AddListener(ExitToHome);
 
         SetButtonLabel(pauseButton, "Pause");
     }
@@ -105,7 +113,7 @@ public class PauseRestartUI : MonoBehaviour
     void UnwireButtons()
     {
         if (pauseButton) pauseButton.onClick.RemoveListener(TogglePause);
-        if (exitButton)  exitButton.onClick.RemoveListener(RestartGame);
+        if (exitButton)  exitButton.onClick.RemoveListener(ExitToHome);
     }
 
     Button FindButtonByName(string targetName)

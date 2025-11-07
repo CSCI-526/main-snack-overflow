@@ -18,6 +18,8 @@ public class VisionMaskController : MonoBehaviour
     [Header("Radius")]
     public float initialRadius = 0.26f;
     public float currentRadius = 0.26f;
+    [Tooltip("When the player still has lives left, keep at least this radius to avoid total darkness.")]
+    public float minRadiusWhileAlive = 0.08f;
 
     void Awake()
     {
@@ -47,7 +49,12 @@ public class VisionMaskController : MonoBehaviour
     // Update the radius of the vision mask
     public void UpdateRadius(float newRadius)
     {
-        currentRadius = Mathf.Clamp(newRadius, minRadius, maxRadius);
+        float minClamp = minRadius;
+        var lives = LivesManager.Instance;
+        if (lives != null && lives.Current > 0)
+            minClamp = Mathf.Max(minClamp, minRadiusWhileAlive);
+
+        currentRadius = Mathf.Clamp(newRadius, minClamp, maxRadius);
         visionMaskMaterial.SetFloat("_Radius", currentRadius);
     }
 

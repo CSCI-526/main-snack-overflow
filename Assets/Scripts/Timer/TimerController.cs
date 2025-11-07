@@ -48,6 +48,7 @@ public class TimerController : MonoBehaviour
 RectTransform _rt;
 
     const int TOP_SORT_ORDER = 5000;
+    const int TIMER_SORT_ORDER = 4500;
 
     void Awake() => SceneManager.sceneLoaded += OnSceneLoaded;
     void OnDestroy() => SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -74,6 +75,7 @@ RectTransform _rt;
             timerText.color = normalColor;
             timerText.fontSize = baseFontSize;
             _rt.localScale = Vector3.one;
+            EnsureTimerOnTop();
         }
 
         if (!gameOverPanel)
@@ -136,6 +138,7 @@ RectTransform _rt;
         isGameOver = false;
         currentTime = Mathf.Max(0f, startTime);
         UpdateTimerUI();
+        EnsureTimerOnTop();
     }
 
     void UpdateTimerUI()
@@ -232,6 +235,22 @@ RectTransform _rt;
             var go = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
             DontDestroyOnLoad(go);
         }
+    }
+
+    void EnsureTimerOnTop()
+    {
+        if (!timerText)
+            return;
+
+        var canvas = timerText.GetComponentInParent<Canvas>();
+        if (!canvas)
+            return;
+
+        canvas.overrideSorting = true;
+        if (canvas.sortingOrder < TIMER_SORT_ORDER)
+            canvas.sortingOrder = TIMER_SORT_ORDER;
+        if (canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
     }
 
     GameObject FindPanelByNameIncludingInactive(string panelName)

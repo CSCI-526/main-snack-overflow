@@ -21,6 +21,7 @@ public class Level1TutorialController : MonoBehaviour
         ClickImpostor,
         VisionReview,
         ShowCivilian,
+        TimerBriefing,
         Finished
     }
 
@@ -34,8 +35,10 @@ static readonly Vector2 MessageSizeMedium = new(600f, 160f);
     static readonly Vector2 ActionAnchor = new(0.5f, 0.78f);
     static readonly Vector2 ActionOffset = new(0f, -15f);
 
-static readonly Vector2 CivilianAnchor = new(0.5f, 0.78f);
-static readonly Vector2 CivilianOffset = new(0f, -15f);
+    static readonly Vector2 CivilianAnchor = new(0.5f, 0.78f);
+    static readonly Vector2 CivilianOffset = new(0f, -15f);
+    static readonly Vector2 TimerAnchor = new(0.5f, 0.82f);
+    static readonly Vector2 TimerOffset = new(0f, -5f);
 
 readonly Vector2 arrowTailOffset = new(-140f, 55f);
 const float arrowTargetHeight = 1.6f;
@@ -63,6 +66,7 @@ RectTransform arrowHeadRect;
 const float arrowHeadWidth = 26f;
 const float arrowShaftHeight = 12f;
 Button continueButton;
+Button skipTutorialButton;
 
     static Sprite solidSprite;
     static TMP_FontAsset cachedFont;
@@ -92,6 +96,7 @@ TutorialVisionHint visionHint;
         Instance = this;
         canvas = GetComponent<Canvas>();
         canvasRect = GetComponent<RectTransform>();
+        tutorialCompleted = false;
     }
 
     void OnDisable()
@@ -152,6 +157,7 @@ TutorialVisionHint visionHint;
         ShowMovementMessage();
         continueButton.gameObject.SetActive(false);
         arrowRoot.gameObject.SetActive(false);
+        ConfigureSkipButton(true);
 
         // Vision hint overlay (placed near vision circle edge)
         var hintGO = new GameObject("VisionHint", typeof(RectTransform), typeof(Image));
@@ -161,7 +167,7 @@ TutorialVisionHint visionHint;
         hintRect.anchorMax = Vector2.one;
         hintRect.pivot = new Vector2(1f, 1f);
         hintRect.anchoredPosition = new Vector2(-60f, -40f);
-        hintRect.sizeDelta = new Vector2(460f, 210f);
+        hintRect.sizeDelta = new Vector2(460f, 270f);
 
         var hintBackground = hintGO.GetComponent<Image>();
         hintBackground.sprite = GetSolidSprite();
@@ -211,8 +217,8 @@ TutorialVisionHint visionHint;
         hintTextRect.anchorMin = new Vector2(0f, 1f);
         hintTextRect.anchorMax = new Vector2(1f, 1f);
         hintTextRect.pivot = new Vector2(0.5f, 1f);
-        hintTextRect.offsetMin = new Vector2(36f, -120f);
-        hintTextRect.offsetMax = new Vector2(-36f, -20f);
+        hintTextRect.offsetMin = new Vector2(36f, -210f);
+        hintTextRect.offsetMax = new Vector2(-36f, -100f);
 
         var hintTMP = hintTextGO.AddComponent<TextMeshProUGUI>();
         hintTMP.font = GetFontAsset();
@@ -229,7 +235,7 @@ TutorialVisionHint visionHint;
         hintButtonRect.anchorMin = new Vector2(0.5f, 0f);
         hintButtonRect.anchorMax = new Vector2(0.5f, 0f);
         hintButtonRect.pivot = new Vector2(0.5f, 0f);
-        hintButtonRect.anchoredPosition = new Vector2(0f, 20f);
+        hintButtonRect.anchoredPosition = new Vector2(0f, -32f);
         hintButtonRect.sizeDelta = new Vector2(240f, 60f);
 
         var hintButtonImage = hintButtonGO.AddComponent<Image>();
@@ -630,11 +636,73 @@ TutorialVisionHint visionHint;
                 increase: false,
                 maskRect: maskRect,
                 radius: radius,
-                customMessage: "Killing civilians shrinks your vision across the landscape.",
+                customMessage: "Killing civilians shrinks your vision and slows your speed across the landscape.",
                 requireContinue: false,
                 continueCallback: null,
                 persistent: true);
         }
+    }
+
+    void ShowTimerBriefing()
+    {
+        currentStep = Step.TimerBriefing;
+        visionHint?.Hide();
+        arrowRoot.gameObject.SetActive(PointArrowToTimer());
+
+        string message =
+            "<b>Time to Hunt</b>\n" +
+            "You have <b>1 minute</b> to eliminate all 10 impostors.";
+
+        SetMessage(
+            message,
+            TimerAnchor,
+            TimerOffset,
+            MessageSizeMedium);
+
+        continueButton.interactable = true;
+        continueButton.gameObject.SetActive(true);
+        RefreshOverlayInteractivity();
+
+        ConfigureSkipButton(false);
+    }
+
+    bool PointArrowToTimer()
+    {
+        if (!arrowRoot || !canvasRect || timer == null || timer.timerText == null)
+            return false;
+
+        var timerRect = timer.timerText.rectTransform;
+        if (!timerRect)
+            return false;
+
+        Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        float offset = 25f;
+        Vector3 timerLocal = new Vector3(timerRect.rect.xMin - offset, timerRect.rect.center.y, 0f);
+        Vector3 worldTarget = timerRect.TransformPoint(timerLocal);
+        Vector2 screenTip = RectTransformUtility.WorldToScreenPoint(cam, worldTarget);
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenTip, cam, out Vector2 localTip))
+            return false;
+
+        Vector2 basePos = localTip + new Vector2(-180f, -40f);
+        arrowRoot.anchoredPosition = basePos;
+
+        Vector2 delta = localTip - basePos;
+        float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+        arrowRoot.localEulerAngles = new Vector3(0f, 0f, angle);
+
+        float tipDistance = Mathf.Max(20f, delta.magnitude);
+        float shaftLength = Mathf.Max(10f, tipDistance - arrowHeadWidth * 0.5f);
+        if (arrowShaftRect != null)
+        {
+            arrowShaftRect.sizeDelta = new Vector2(shaftLength, arrowShaftHeight);
+            arrowShaftRect.anchoredPosition = Vector2.zero;
+        }
+
+        if (arrowHeadRect != null)
+            arrowHeadRect.anchoredPosition = new Vector2(shaftLength, 0f);
+
+        return true;
     }
 
     void ShowVisionGrowthPrompt()
@@ -660,7 +728,7 @@ TutorialVisionHint visionHint;
                 increase: true,
                 maskRect: maskRect,
                 radius: radius,
-                customMessage: "Killing impostors expands your vision across the landscape.",
+                customMessage: "Killing impostors expands your vision and increases your speed across the landscape.",
                 requireContinue: true,
                 continueCallback: OnVisionGrowthContinue);
         }
@@ -700,6 +768,9 @@ TutorialVisionHint visionHint;
             case Step.ShowCivilian:
                 MaintainCivilianArrow();
                 break;
+            case Step.TimerBriefing:
+                PointArrowToTimer();
+                break;
         }
     }
 
@@ -708,8 +779,21 @@ TutorialVisionHint visionHint;
         if (!tutorialActive)
             return;
 
+        if (currentStep == Step.ShowCivilian)
+        {
+            ShowTimerBriefing();
+            return;
+        }
+
         continueButton.interactable = false;
         FinishTutorial();
+    }
+
+    void OnSkipTutorialClicked()
+    {
+        ConfigureSkipButton(false);
+        if (tutorialActive)
+            FinishTutorial();
     }
 
     void FinishTutorial()
@@ -724,7 +808,7 @@ TutorialVisionHint visionHint;
 
         if (continueButton)
             continueButton.gameObject.SetActive(false);
-        RefreshOverlayInteractivity();
+        ConfigureSkipButton(false);
 
         if (ClickToSmite.HitFilter == FilterHits)
             ClickToSmite.HitFilter = null;
@@ -762,6 +846,8 @@ TutorialVisionHint visionHint;
         ClearTutorialActors();
         visionHint?.Hide();
         VisionMaskController.Instance?.ResetRadius();
+        ConfigureSkipButton(false);
+        RefreshOverlayInteractivity();
 
         if (ImpostorTracker.Instance != null)
             ImpostorTracker.Instance.ResetCount();
@@ -928,6 +1014,44 @@ TutorialVisionHint visionHint;
         btnLabel.color = Color.white;
         btnLabel.raycastTarget = false;
 
+        var skipGO = new GameObject("SkipTutorialButton", typeof(RectTransform));
+        var skipRect = skipGO.GetComponent<RectTransform>();
+        skipRect.SetParent(overlayRoot, false);
+        skipRect.anchorMin = new Vector2(0.5f, 0.15f);
+        skipRect.anchorMax = new Vector2(0.5f, 0.15f);
+        skipRect.pivot = new Vector2(0.5f, 0.5f);
+        skipRect.sizeDelta = new Vector2(220f, 58f);
+        skipRect.anchoredPosition = new Vector2(0f, 0f);
+
+        var skipImage = skipGO.AddComponent<Image>();
+        skipImage.sprite = GetSolidSprite();
+        skipImage.color = new Color(0.25f, 0.28f, 0.33f, 0.95f);
+
+        var skipShadow = skipGO.AddComponent<Shadow>();
+        skipShadow.effectDistance = new Vector2(0f, -3f);
+        skipShadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
+
+        skipTutorialButton = skipGO.AddComponent<Button>();
+        skipTutorialButton.targetGraphic = skipImage;
+        skipTutorialButton.onClick.AddListener(OnSkipTutorialClicked);
+        skipTutorialButton.gameObject.SetActive(false);
+
+        var skipLabelGO = new GameObject("Label", typeof(RectTransform));
+        var skipLabelRect = skipLabelGO.GetComponent<RectTransform>();
+        skipLabelRect.SetParent(skipGO.transform, false);
+        skipLabelRect.anchorMin = Vector2.zero;
+        skipLabelRect.anchorMax = Vector2.one;
+        skipLabelRect.offsetMin = Vector2.zero;
+        skipLabelRect.offsetMax = Vector2.zero;
+
+        var skipLabel = skipLabelGO.AddComponent<TextMeshProUGUI>();
+        skipLabel.font = GetFontAsset();
+        skipLabel.text = "Skip Tutorial";
+        skipLabel.fontSize = 26f;
+        skipLabel.alignment = TextAlignmentOptions.Center;
+        skipLabel.color = Color.white;
+        skipLabel.raycastTarget = false;
+
         var arrowGO = new GameObject("Arrow", typeof(RectTransform));
         arrowRoot = arrowGO.GetComponent<RectTransform>();
         arrowRoot.SetParent(overlayRoot, false);
@@ -986,7 +1110,8 @@ TutorialVisionHint visionHint;
         if (!overlayGroup)
             return;
 
-        bool allowInput = continueButton != null && continueButton.gameObject.activeInHierarchy;
+        bool allowInput = (continueButton != null && continueButton.gameObject.activeInHierarchy) ||
+                          (skipTutorialButton != null && skipTutorialButton.gameObject.activeInHierarchy);
         overlayGroup.blocksRaycasts = allowInput;
         overlayGroup.interactable = allowInput;
     }
@@ -1050,6 +1175,17 @@ TutorialVisionHint visionHint;
     {
         if (messagePanel)
             messagePanel.gameObject.SetActive(visible);
+        RefreshOverlayInteractivity();
+    }
+
+    void ConfigureSkipButton(bool visible)
+    {
+        if (!skipTutorialButton)
+            return;
+
+        skipTutorialButton.gameObject.SetActive(visible);
+        skipTutorialButton.interactable = visible;
+        RefreshOverlayInteractivity();
     }
 
     static bool IsLevelOneScene()

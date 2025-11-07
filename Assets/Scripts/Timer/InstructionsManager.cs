@@ -321,6 +321,9 @@ public class InstructionsManager : MonoBehaviour
         {
             skipButton.gameObject.SetActive(false);
             skipButton.onClick.AddListener(SkipIntro);
+            var skipLabel = skipButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (skipLabel)
+                skipLabel.text = "Skip Tutorial";
         }
 
         if (autoStart)
