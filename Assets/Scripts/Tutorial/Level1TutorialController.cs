@@ -651,13 +651,14 @@ TutorialVisionHint visionHint;
 
         string message =
             "<b>Time to Hunt</b>\n" +
-            "You have <b>1 minute</b> to eliminate all 10 impostors.";
+            "You have <b>1 minute</b> to eliminate all 10 impostors.\n" +
+            "Press Continue to begin the mission.";
 
         SetMessage(
             message,
             TimerAnchor,
-            TimerOffset,
-            MessageSizeMedium);
+            TimerOffset + new Vector2(0f, 20f),
+            MessageSizeLarge);
 
         continueButton.interactable = true;
         continueButton.gameObject.SetActive(true);
@@ -1147,8 +1148,7 @@ TutorialVisionHint visionHint;
     {
         string message =
             $"<b>Leave <color=#{civilianColorHex}>Civilians</color> Alone</b>\n" +
-            $"If a non-player character is <color=#{impostorColorHex}>not red</color>, do <b>not</b> click them.\n" +
-            "Press Continue to begin.";
+            $"If a non-player character is <color=#{impostorColorHex}>not red</color>, do <b>not</b> click them.";
 
         SetMessage(
             message,
