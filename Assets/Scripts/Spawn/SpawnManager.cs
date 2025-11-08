@@ -332,6 +332,7 @@
 
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -362,8 +363,14 @@ public class SpawnManager : MonoBehaviour
     static readonly string[] RedFocusScenes = { "LvL1", "LvL2" };
     static readonly string[] RedFocusWarmColorKeywords = { "raspberry", "carmine", "tomato", "pink", "magenta", "orange" };
 
+    const string LevelTwoSceneName = "LvL2";
+    const float LevelTwoColorShiftSeconds = 15f;
+    static readonly string[] LevelTwoColorKeywords = { "red", "green", "yellow", "orange", "magenta", "blue" };
+
     int[] redFocusCivilianColorIdsCache;
     int redFocusImpostorColorIdCache = -2;
+    readonly List<NPCIdentity> spawnedImpostors = new List<NPCIdentity>();
+    Coroutine levelTwoColorRoutine;
 
     readonly List<Vector3> usedSpawnPositions = new List<Vector3>();
 
@@ -385,10 +392,15 @@ public class SpawnManager : MonoBehaviour
     {
         redFocusCivilianColorIdsCache = null;
         redFocusImpostorColorIdCache = -2;
+        spawnedImpostors.Clear();
+        StopLevelTwoColorCycle();
+        GameRoundState.Instance?.ClearImpostorColorOverride();
         usedSpawnPositions.Clear();
         SpawnPlayer();
         SpawnCivilians();
         SpawnImpostors();
+        if (IsLevelTwoScene())
+            StartLevelTwoColorCycle();
     }
 
     void SpawnPlayer()
@@ -408,6 +420,11 @@ public class SpawnManager : MonoBehaviour
 
         Instantiate(playerPrefab, p, Quaternion.identity, playerParent);
         usedSpawnPositions.Add(p);
+    }
+
+    void OnDisable()
+    {
+        StopLevelTwoColorCycle();
     }
 
     void SpawnCivilians()
@@ -462,7 +479,9 @@ public class SpawnManager : MonoBehaviour
 
             // Assign impostor identity (true = impostor)
             int appliedColor = forceRedRules && impostorColorId >= 0 ? impostorColorId : pair.colorId;
-            ApplyNPCIdentity(npc, true, pair.shape, appliedColor);
+            var identity = ApplyNPCIdentity(npc, true, pair.shape, appliedColor);
+            if (identity != null)
+                spawnedImpostors.Add(identity);
 
             // Create a unique runtime path for this impostor
             var path = CreateRuntimePath(pair.shape, pos);
@@ -474,7 +493,7 @@ public class SpawnManager : MonoBehaviour
     }
 
 
-    void ApplyNPCIdentity(GameObject npc, bool isImpostor, PathShape.ShapeType shapeType, int colorId)
+    NPCIdentity ApplyNPCIdentity(GameObject npc, bool isImpostor, PathShape.ShapeType shapeType, int colorId)
     {
         var id = npc.GetComponent<NPCIdentity>();
         if (!id) id = npc.AddComponent<NPCIdentity>();
@@ -484,6 +503,128 @@ public class SpawnManager : MonoBehaviour
 
         var rends = npc.GetComponentsInChildren<Renderer>();
         id.ApplyColor(palette, rends);
+        return id;
+    }
+
+    void StartLevelTwoColorCycle()
+    {
+        StopLevelTwoColorCycle();
+
+        if (!IsLevelTwoScene())
+            return;
+
+        var sequence = BuildLevelTwoColorSequence();
+        if (sequence.Length <= 1)
+        {
+            // Ensure override still matches whatever initial color we have
+            if (sequence.Length == 1)
+                ApplyImpostorColor(sequence[0], false);
+            return;
+        }
+
+        levelTwoColorRoutine = StartCoroutine(LevelTwoColorCycleRoutine(sequence));
+    }
+
+    void StopLevelTwoColorCycle()
+    {
+        if (levelTwoColorRoutine != null)
+        {
+            StopCoroutine(levelTwoColorRoutine);
+            levelTwoColorRoutine = null;
+        }
+    }
+
+    IEnumerator LevelTwoColorCycleRoutine(int[] sequence)
+    {
+        if (sequence == null || sequence.Length == 0)
+            yield break;
+
+        int index = 0;
+        ApplyImpostorColor(sequence[index], false);
+
+        while (true)
+        {
+            yield return new WaitForSeconds(LevelTwoColorShiftSeconds);
+            index = (index + 1) % sequence.Length;
+            ApplyImpostorColor(sequence[index], true);
+        }
+    }
+
+    void ApplyImpostorColor(int colorId, bool announce)
+    {
+        if (colorId < 0)
+            return;
+
+        var roundState = GameRoundState.Instance;
+        roundState?.SetImpostorColorOverride(colorId);
+        ApplyColorToImpostors(colorId);
+
+        if (announce)
+            AnnounceColorChange(colorId);
+    }
+
+    void ApplyColorToImpostors(int colorId)
+    {
+        if (!palette)
+            return;
+
+        spawnedImpostors.RemoveAll(id => id == null);
+
+        foreach (var id in spawnedImpostors)
+        {
+            if (!id) continue;
+            id.colorId = colorId;
+            var rends = id.GetComponentsInChildren<Renderer>();
+            id.ApplyColor(palette, rends);
+        }
+    }
+
+    void AnnounceColorChange(int colorId)
+    {
+        if (!palette)
+            return;
+
+        string colorName = palette.GetName(colorId);
+        if (string.IsNullOrEmpty(colorName))
+            colorName = "a new color";
+
+        KillTextController.Instance?.Show($"Impostors are now {colorName}!");
+    }
+
+    int[] BuildLevelTwoColorSequence()
+    {
+        if (!palette || palette.Count == 0)
+            return Array.Empty<int>();
+
+        var ids = new List<int>();
+        foreach (var keyword in LevelTwoColorKeywords)
+        {
+            int id = FindColorIdByKeyword(keyword);
+            if (id >= 0 && !ids.Contains(id))
+                ids.Add(id);
+        }
+
+        if (ids.Count == 0)
+        {
+            for (int i = 0; i < palette.Count; i++)
+                ids.Add(i);
+        }
+
+        return ids.ToArray();
+    }
+
+    int FindColorIdByKeyword(string keyword)
+    {
+        if (!palette || string.IsNullOrEmpty(keyword))
+            return -1;
+
+        for (int i = 0; i < palette.Count; i++)
+        {
+            string name = palette.GetName(i);
+            if (NameMatchesKeyword(name, keyword))
+                return i;
+        }
+        return -1;
     }
 
     int PickCivilianColor()
@@ -559,6 +700,12 @@ public class SpawnManager : MonoBehaviour
                 return true;
         }
         return false;
+    }
+
+    bool IsLevelTwoScene()
+    {
+        var scene = SceneManager.GetActiveScene();
+        return scene.IsValid() && scene.name == LevelTwoSceneName;
     }
 
     static bool NameMatchesAnyKeyword(string name, string[] keywords)

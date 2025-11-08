@@ -16,6 +16,7 @@ public class GameRoundState : MonoBehaviour
 
     const string ImpostorColorKeyword = "red";
     int impostorColorIdCache = -2;
+    int impostorColorOverride = -1;
 
     void Awake()
     {
@@ -23,6 +24,7 @@ public class GameRoundState : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
         impostorColorIdCache = -2;
+        impostorColorOverride = -1;
     }
 
     public bool MatchesAllowed(PathShape.ShapeType s, int colorId)
@@ -38,11 +40,25 @@ public class GameRoundState : MonoBehaviour
 
     public int GetImpostorColorId()
     {
+        if (impostorColorOverride >= 0)
+            return impostorColorOverride;
+
         if (impostorColorIdCache != -2)
             return impostorColorIdCache;
 
         impostorColorIdCache = FindImpostorColorId();
         return impostorColorIdCache;
+    }
+
+    public void SetImpostorColorOverride(int colorId)
+    {
+        impostorColorOverride = colorId;
+    }
+
+    public void ClearImpostorColorOverride()
+    {
+        impostorColorOverride = -1;
+        impostorColorIdCache = -2;
     }
 
     int FindImpostorColorId()
