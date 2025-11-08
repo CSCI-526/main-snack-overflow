@@ -21,6 +21,12 @@ public class VisionMaskController : MonoBehaviour
     [Tooltip("When the player still has lives left, keep at least this radius to avoid total darkness.")]
     public float minRadiusWhileAlive = 0.08f;
 
+    [Header("Passive Shrink")]
+    [Tooltip("Radius will slowly decay toward this value after it has been increased.")]
+    public float passiveShrinkFloor = 0.26f;
+    [Tooltip("Units per second the radius shrinks when above the floor.")]
+    public float passiveShrinkPerSecond = 0.008f;
+
     void Awake()
     {
         Instance = this;
@@ -73,4 +79,19 @@ public class VisionMaskController : MonoBehaviour
         group.interactable = false;
         group.blocksRaycasts = false;
     }
+
+    void Update()
+    {
+        if (passiveShrinkPerSecond <= 0f)
+            return;
+
+        if (currentRadius <= passiveShrinkFloor)
+            return;
+
+        float delta = passiveShrinkPerSecond * Time.deltaTime;
+        float next = Mathf.Max(passiveShrinkFloor, currentRadius - delta);
+        if (!Mathf.Approximately(next, currentRadius))
+            UpdateRadius(next);
+    }
+
 }
