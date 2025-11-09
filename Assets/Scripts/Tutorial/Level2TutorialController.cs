@@ -17,6 +17,7 @@ public class Level2TutorialController : MonoBehaviour
     static Level2TutorialController instance;
     static bool tutorialCompleted;
     static string lastSceneName;
+    static bool sceneLoadedHooked;
 
     InstructionsManager instructions;
     TimerController timer;
@@ -57,16 +58,15 @@ public class Level2TutorialController : MonoBehaviour
     public static bool TryBeginTutorial(InstructionsManager mgr)
     {
         string sceneName = SceneManager.GetActiveScene().name;
-        if (sceneName == "LvL2" && sceneName != lastSceneName)
-        {
+        bool sceneChanged = sceneName != lastSceneName;
+        if (sceneName == "LvL2" && sceneChanged)
             tutorialCompleted = false;
-            lastSceneName = sceneName;
-        }
+        lastSceneName = sceneName;
 
+        EnsureInstance();
         if (tutorialCompleted || !IsLevelTwoScene())
             return false;
 
-        EnsureInstance();
         return instance != null && instance.InternalBegin(mgr);
     }
 
@@ -77,7 +77,7 @@ public class Level2TutorialController : MonoBehaviour
         canvasRect = GetComponent<RectTransform>();
         lastSceneName = SceneManager.GetActiveScene().name;
         tutorialCompleted = false;
-        SceneManager.sceneLoaded += HandleSceneLoaded;
+        EnsureSceneLoadedHooked();
     }
 
     static void EnsureInstance()
@@ -102,6 +102,15 @@ public class Level2TutorialController : MonoBehaviour
         go.GetComponent<GraphicRaycaster>().ignoreReversedGraphics = true;
 
         instance = go.GetComponent<Level2TutorialController>();
+    }
+
+    static void EnsureSceneLoadedHooked()
+    {
+        if (sceneLoadedHooked)
+            return;
+
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        sceneLoadedHooked = true;
     }
 
     bool InternalBegin(InstructionsManager mgr)
@@ -503,7 +512,6 @@ public class Level2TutorialController : MonoBehaviour
     {
         if (instance == this)
             instance = null;
-        SceneManager.sceneLoaded -= HandleSceneLoaded;
     }
 
     static bool IsLevelTwoScene()
