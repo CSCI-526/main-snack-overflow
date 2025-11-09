@@ -265,6 +265,7 @@ TutorialVisionHint visionHint;
         hintButtonText.raycastTarget = false;
 
         visionHint = hintGO.AddComponent<TutorialVisionHint>();
+        visionHint.arrowDistanceScale = 0.5f;
         visionHint.Configure(hintRect, hintTMP, hintArrowGroup, hintShaftRect, hintHeadRect, hintTextRect, hintButton);
         visionHint.circlePadding = 0f;
         visionHint.Hide();
