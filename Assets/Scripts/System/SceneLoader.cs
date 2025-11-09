@@ -23,7 +23,10 @@ public class SceneLoader : MonoBehaviour {
         }
         SceneManager.LoadScene("LvL2");
     }
-    
+    public void LoadLevel3() {
+        SceneManager.LoadScene("LvL3");
+    }
+
     public void LoadHome() {
         GameMode.SetTutorial(false);
         SceneManager.LoadScene("Home", LoadSceneMode.Single);

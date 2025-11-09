@@ -1,9 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;  // Make sure to include this for RawImage
+using UnityEngine.SceneManagement;
 
 public class VisionMaskController : MonoBehaviour
 {
     public static VisionMaskController Instance;
+
+    const string LevelThreeSceneName = "LvL3";
 
     private CanvasGroup group;
     private Material visionMaskMaterial;
@@ -27,6 +30,8 @@ public class VisionMaskController : MonoBehaviour
     [Tooltip("Units per second the radius shrinks when above the floor.")]
     public float passiveShrinkPerSecond = 0.008f;
 
+    bool maskSuppressed;
+
     void Awake()
     {
         Instance = this;
@@ -36,15 +41,27 @@ public class VisionMaskController : MonoBehaviour
             visionMaskImage = GetComponent<RawImage>(); // Automatically find it if not set
         }
 
-        visionMaskMaterial = visionMaskImage.material;
+        visionMaskMaterial = visionMaskImage ? visionMaskImage.material : null;
 
         group = GetComponent<CanvasGroup>();
         if (group == null)
             group = gameObject.AddComponent<CanvasGroup>();
 
+        maskSuppressed = IsLevelThreeScene();
+
         currentRadius = initialRadius;
         ResetRadius();
-        HideMask(); // start invisible
+
+        if (maskSuppressed)
+        {
+            if (visionMaskImage) visionMaskImage.enabled = false;
+            HideMask();
+        }
+        else
+        {
+            if (visionMaskImage) visionMaskImage.enabled = true;
+            HideMask(); // start invisible
+        }
     }
 
     public void ResetRadius()
@@ -61,6 +78,8 @@ public class VisionMaskController : MonoBehaviour
             minClamp = Mathf.Max(minClamp, minRadiusWhileAlive);
 
         currentRadius = Mathf.Clamp(newRadius, minClamp, maxRadius);
+        if (maskSuppressed || visionMaskMaterial == null)
+            return;
         visionMaskMaterial.SetFloat("_Radius", currentRadius);
     }
 
@@ -68,6 +87,7 @@ public class VisionMaskController : MonoBehaviour
 
     public void ShowMask()
     {
+        if (maskSuppressed) return;
         group.alpha = 1f;
         group.interactable = false;
         group.blocksRaycasts = false;
@@ -75,6 +95,11 @@ public class VisionMaskController : MonoBehaviour
 
     public void HideMask()
     {
+        if (maskSuppressed)
+        {
+            group.alpha = 0f;
+            return;
+        }
         group.alpha = 0f;
         group.interactable = false;
         group.blocksRaycasts = false;
@@ -82,6 +107,9 @@ public class VisionMaskController : MonoBehaviour
 
     void Update()
     {
+        if (maskSuppressed)
+            return;
+
         if (passiveShrinkPerSecond <= 0f)
             return;
 
@@ -94,4 +122,11 @@ public class VisionMaskController : MonoBehaviour
             UpdateRadius(next);
     }
 
+
+
+    bool IsLevelThreeScene()
+    {
+        var scene = SceneManager.GetActiveScene();
+        return scene.IsValid() && scene.name == LevelThreeSceneName;
+    }
 }
