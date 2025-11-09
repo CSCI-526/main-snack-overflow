@@ -179,7 +179,7 @@ TutorialVisionHint visionHint;
         hintArrowGroup.anchorMin = new Vector2(0f, 0.5f);
         hintArrowGroup.anchorMax = new Vector2(0f, 0.5f);
         hintArrowGroup.pivot = new Vector2(0f, 0.5f);
-        hintArrowGroup.anchoredPosition = new Vector2(20f, -64f);
+        hintArrowGroup.anchoredPosition = new Vector2(20f, -46f);
         hintArrowGroup.sizeDelta = Vector2.zero;
 
         var hintShaftGO = new GameObject("Shaft", typeof(RectTransform), typeof(Image));
@@ -265,6 +265,7 @@ TutorialVisionHint visionHint;
         hintButtonText.raycastTarget = false;
 
         visionHint = hintGO.AddComponent<TutorialVisionHint>();
+        visionHint.arrowDistanceScale = 0.5f;
         visionHint.Configure(hintRect, hintTMP, hintArrowGroup, hintShaftRect, hintHeadRect, hintTextRect, hintButton);
         visionHint.circlePadding = 0f;
         visionHint.Hide();

@@ -23,6 +23,8 @@ public class TutorialVisionHint : MonoBehaviour
     public float displayDuration = 2f;
     [Header("Layout")]
     public float circlePadding = 0f;
+    [Range(0.2f, 1f)]
+    public float arrowDistanceScale = 1f;
 
     float hideAt;
     bool visible;
@@ -34,6 +36,7 @@ public class TutorialVisionHint : MonoBehaviour
     Action onContinue;
     float headTipDepth;
     bool persistentDisplay;
+    Vector2 rootDefaultAnchoredPosition;
 
     void Awake()
     {
@@ -50,6 +53,7 @@ public class TutorialVisionHint : MonoBehaviour
         trackedMask = null;
         trackedRadius = 0f;
         persistentDisplay = false;
+        rootDefaultAnchoredPosition = root ? root.anchoredPosition : Vector2.zero;
 
         if (continueButton)
             continueButton.onClick.AddListener(HandleContinue);
@@ -72,6 +76,7 @@ public class TutorialVisionHint : MonoBehaviour
         targetArrowLength = shaftBaseSize.x;
         headTipDepth = CalculateHeadTipDepth();
         persistentDisplay = false;
+        rootDefaultAnchoredPosition = root ? root.anchoredPosition : Vector2.zero;
 
         if (continueButton)
         {
@@ -120,7 +125,11 @@ public class TutorialVisionHint : MonoBehaviour
         trackedMask = null;
         trackedRadius = 0f;
         persistentDisplay = false;
-        if (root) root.gameObject.SetActive(false);
+        if (root)
+        {
+            root.anchoredPosition = rootDefaultAnchoredPosition;
+            root.gameObject.SetActive(false);
+        }
         if (continueButton)
         {
             continueButton.gameObject.SetActive(false);
@@ -181,7 +190,30 @@ public class TutorialVisionHint : MonoBehaviour
         Vector2 tipParent = localCenter + dir * perimeterRadius;
         Vector3 tipWorld = parentRect.TransformPoint(new Vector3(tipParent.x, tipParent.y, 0f));
 
+        ApplyArrowDistanceScaling(baseParent, tipParent);
+
         UpdateArrow(cam, tipWorld);
+    }
+
+    void ApplyArrowDistanceScaling(Vector2 baseParent, Vector2 tipParent)
+    {
+        if (!root)
+            return;
+
+        float scale = Mathf.Clamp(arrowDistanceScale, 0.2f, 1f);
+        if (Mathf.Approximately(scale, 1f))
+            return;
+
+        Vector2 rootShift = root.anchoredPosition - rootDefaultAnchoredPosition;
+        Vector2 baseDefault = baseParent - rootShift;
+        Vector2 toTipDefault = tipParent - baseDefault;
+
+        Vector2 desiredBase = tipParent - toTipDefault * scale;
+        Vector2 delta = desiredBase - baseParent;
+        if (delta.sqrMagnitude < 0.25f)
+            return;
+
+        root.anchoredPosition += delta;
     }
 
     void UpdateArrow(Camera cam, Vector3 tipWorld)
