@@ -435,7 +435,9 @@ TutorialVisionHint visionHint;
     {
         if (spawner && spawner.palette && colorId >= 0 && colorId < spawner.palette.Count)
         {
-            Color c = spawner.palette.Get(colorId);
+            var state = GameRoundState.Instance;
+            bool isImpostorColor = state != null && state.IsImpostorColor(colorId);
+            Color c = spawner.palette.GetForRole(colorId, isImpostorColor);
             return ColorUtility.ToHtmlStringRGB(c);
         }
         return fallback.TrimStart('#');

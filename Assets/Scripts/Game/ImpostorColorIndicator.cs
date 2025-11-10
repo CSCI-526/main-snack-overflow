@@ -51,7 +51,7 @@ public class ImpostorColorIndicator : MonoBehaviour
 
     public void SetColor(NPCColorPalette palette, int colorId)
     {
-        Color color = palette ? palette.Get(colorId) : Color.white;
+        Color color = palette ? palette.GetForRole(colorId, true) : Color.white;
         string colorName = palette ? palette.GetName(colorId) : "Unknown";
         SetColor(colorName, color);
     }

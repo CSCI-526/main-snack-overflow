@@ -9,7 +9,7 @@ public class NPCIdentity : MonoBehaviour
     public void ApplyColor(NPCColorPalette palette, Renderer[] renderers)
     {
         if (!palette || colorId < 0) return;
-        var c = palette.Get(colorId);
+        var c = palette.GetForRole(colorId, isImpostor);
         foreach (var r in renderers)
         {
             if (!r) continue;
