@@ -18,7 +18,7 @@ public class LightCollectible : MonoBehaviour
         if (!player) return;
 
         if (PlayerLightController.Instance != null)
-            PlayerLightController.Instance.HandleLightOrbPickup(lightReward);
+            PlayerLightController.Instance.AddLightEnergy(lightReward);
 
         if (destroyOnPickup)
             Destroy(gameObject);

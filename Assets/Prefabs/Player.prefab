@@ -173,23 +173,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetLight: {fileID: 884736000000000002}
-  minRange: 30
-  maxRange: 42
-  perCollectibleIncrease: 1.25
-  collectibleBurstMultiplier: 1.25
-  passiveDecayPerSecond: 0.2
-  onlyActiveInLevelThree: 0
-  startAtMinRange: 1
-  growTorchWithCollectibles: 0
-  rangeLerpSpeed: 5
-  brightenSunOnCollect: 1
-  sunBurstMultiplier: 2
-  scaleIntensityWithRange: 1
-  intensityAtMinRange: 20
-  intensityAtMaxRange: 26
-  syncVisionMaskRadius: 1
-  visionRadiusAtMinRange: 0.6
-  visionRadiusAtMaxRange: 0.92
+  minRange: 200
+  maxRange: 500
+  perCollectibleIncrease: 10
+  passiveDecayPerSecond: 0.5
+  onlyActiveInLevelThree: 1
 --- !u!1 &884736000000000000
 GameObject:
   m_ObjectHideFlags: 0
@@ -234,8 +222,8 @@ Light:
   m_Type: 2
   m_Shape: 0
   m_Color: {r: 1, g: 0.88235295, b: 0.7137255, a: 1}
-  m_Intensity: 26
-  m_Range: 36
+  m_Intensity: 15.25
+  m_Range: 150
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
