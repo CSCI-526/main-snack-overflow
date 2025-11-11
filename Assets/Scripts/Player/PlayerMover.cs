@@ -179,5 +179,5 @@ public bool logSpeed = false;
         maxHitSpeedMultiplier = Mathf.Max(maxHitSpeedMultiplier, minHitSpeedMultiplier);
     }
 
-    bool IsStunned() => Time.time < stunUntil;
+    public bool IsStunned() => Time.time < stunUntil;
 }
