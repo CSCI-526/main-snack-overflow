@@ -362,21 +362,24 @@ public class SpawnManager : MonoBehaviour
 
     [Header("HUD")]
     [Tooltip("Optional root object (e.g., HUD canvas) that contains the ImpostorColorIndicator. " +
-             "If assigned, it will be activated automatically when Level 2 begins.")]
-    public GameObject levelTwoHUDRoot;
+             "If assigned, it will be activated automatically when a color-cycle level (LvL2/LvL3) begins.")]
+    public GameObject colorCycleHUDRoot;
 
     static readonly string[] RedFocusScenes = { "LvL1", "LvL2" };
     static readonly string[] RedFocusWarmColorKeywords = { "raspberry", "carmine", "tomato", "pink", "magenta", "orange" };
 
     const string LevelTwoSceneName = "LvL2";
+    const string LevelThreeSceneName = "LvL3";
     const float LevelTwoColorShiftSeconds = 15f;
-    static readonly string[] LevelTwoColorKeywords = { "red", "orange", "pink", "yellow", "green" };
+    const float LevelThreeColorShiftSeconds = 15f;
+    static readonly string[] ColorCycleKeywords = { "red", "orange", "pink", "yellow", "green" };
 
     int[] redFocusCivilianColorIdsCache;
     int redFocusImpostorColorIdCache = -2;
     readonly List<NPCIdentity> spawnedImpostors = new List<NPCIdentity>();
     readonly List<NPCIdentity> spawnedCivilians = new List<NPCIdentity>();
-    Coroutine levelTwoColorRoutine;
+    Coroutine colorCycleRoutine;
+    float currentColorCycleShiftSeconds = LevelTwoColorShiftSeconds;
 
     readonly List<Vector3> usedSpawnPositions = new List<Vector3>();
 
@@ -400,14 +403,14 @@ public class SpawnManager : MonoBehaviour
         redFocusImpostorColorIdCache = -2;
         spawnedImpostors.Clear();
         spawnedCivilians.Clear();
-        StopLevelTwoColorCycle();
+        StopColorCycle();
         GameRoundState.Instance?.ClearImpostorColorOverride();
         usedSpawnPositions.Clear();
         SpawnPlayer();
         SpawnCivilians();
         SpawnImpostors();
-        if (IsLevelTwoScene())
-            StartLevelTwoColorCycle();
+        if (TryGetColorCycleShift(out float shiftSeconds))
+            StartColorCycle(shiftSeconds);
     }
 
     void SpawnPlayer()
@@ -431,7 +434,7 @@ public class SpawnManager : MonoBehaviour
 
     void OnDisable()
     {
-        StopLevelTwoColorCycle();
+        StopColorCycle();
     }
 
     void SpawnCivilians()
@@ -515,47 +518,45 @@ public class SpawnManager : MonoBehaviour
         return id;
     }
 
-    void StartLevelTwoColorCycle()
+    void StartColorCycle(float shiftSeconds)
     {
-        StopLevelTwoColorCycle();
+        StopColorCycle();
 
-        if (!IsLevelTwoScene())
-            return;
+        currentColorCycleShiftSeconds = shiftSeconds;
+        EnsureColorCycleHUDActive();
 
-        EnsureLevelTwoHUDActive();
-
-        var sequence = BuildLevelTwoColorSequence();
+        var sequence = BuildColorCycleSequence();
         if (sequence.Length == 0)
             return;
 
         ApplyImpostorColor(sequence[0], false);
-        ApplyLevelTwoCivilianColors(sequence, sequence[0]);
+        ApplyCycleCivilianColors(sequence, sequence[0]);
 
         if (sequence.Length == 1)
             return;
 
-        levelTwoColorRoutine = StartCoroutine(LevelTwoColorCycleRoutine(sequence, 0));
+        colorCycleRoutine = StartCoroutine(ColorCycleRoutine(sequence, 0));
     }
 
-    void StopLevelTwoColorCycle()
+    void StopColorCycle()
     {
-        if (levelTwoColorRoutine != null)
+        if (colorCycleRoutine != null)
         {
-            StopCoroutine(levelTwoColorRoutine);
-            levelTwoColorRoutine = null;
+            StopCoroutine(colorCycleRoutine);
+            colorCycleRoutine = null;
         }
     }
 
-    void EnsureLevelTwoHUDActive()
+    void EnsureColorCycleHUDActive()
     {
-        if (levelTwoHUDRoot && !levelTwoHUDRoot.activeSelf)
-            levelTwoHUDRoot.SetActive(true);
+        if (colorCycleHUDRoot && !colorCycleHUDRoot.activeSelf)
+            colorCycleHUDRoot.SetActive(true);
 
         var indicator = ImpostorColorIndicator.Instance;
         if (!indicator)
         {
-            if (levelTwoHUDRoot)
-                indicator = levelTwoHUDRoot.GetComponentInChildren<ImpostorColorIndicator>(true);
+            if (colorCycleHUDRoot)
+                indicator = colorCycleHUDRoot.GetComponentInChildren<ImpostorColorIndicator>(true);
             if (!indicator)
                 indicator = FindObjectOfType<ImpostorColorIndicator>(true);
         }
@@ -564,7 +565,7 @@ public class SpawnManager : MonoBehaviour
             indicator.gameObject.SetActive(true);
     }
 
-    IEnumerator LevelTwoColorCycleRoutine(int[] sequence, int currentIndex)
+    IEnumerator ColorCycleRoutine(int[] sequence, int currentIndex)
     {
         if (sequence == null || sequence.Length <= 1)
             yield break;
@@ -573,10 +574,10 @@ public class SpawnManager : MonoBehaviour
 
         while (true)
         {
-            yield return new WaitForSeconds(LevelTwoColorShiftSeconds);
+            yield return new WaitForSeconds(currentColorCycleShiftSeconds);
             index = (index + 1) % sequence.Length;
             ApplyImpostorColor(sequence[index], true);
-            ApplyLevelTwoCivilianColors(sequence, sequence[index]);
+            ApplyCycleCivilianColors(sequence, sequence[index]);
         }
     }
 
@@ -610,7 +611,7 @@ public class SpawnManager : MonoBehaviour
         }
     }
 
-    void ApplyLevelTwoCivilianColors(int[] sequence, int impostorColorId)
+    void ApplyCycleCivilianColors(int[] sequence, int impostorColorId)
     {
         if (!palette)
             return;
@@ -676,22 +677,22 @@ public class SpawnManager : MonoBehaviour
         return string.IsNullOrEmpty(colorName) ? "a new color" : colorName;
     }
 
-    int[] BuildLevelTwoColorSequence()
+    int[] BuildColorCycleSequence()
     {
         if (!palette || palette.Count == 0)
             return Array.Empty<int>();
 
         var ids = new List<int>();
-        foreach (var keyword in LevelTwoColorKeywords)
+        foreach (var keyword in ColorCycleKeywords)
         {
             int id = FindColorIdByKeyword(keyword);
             if (id >= 0 && !ids.Contains(id))
                 ids.Add(id);
         }
 
-        if (ids.Count > 0 && ids.Count < LevelTwoColorKeywords.Length)
+        if (ids.Count > 0 && ids.Count < ColorCycleKeywords.Length)
         {
-            Debug.LogWarning($"[SpawnManager] Only found {ids.Count} of {LevelTwoColorKeywords.Length} requested Level 2 colors.");
+            Debug.LogWarning($"[SpawnManager] Only found {ids.Count} of {ColorCycleKeywords.Length} requested color-cycle palette entries.");
         }
 
         if (ids.Count == 0)
@@ -792,10 +793,23 @@ public class SpawnManager : MonoBehaviour
         return false;
     }
 
-    bool IsLevelTwoScene()
+    bool TryGetColorCycleShift(out float shiftSeconds)
     {
+        shiftSeconds = 0f;
         var scene = SceneManager.GetActiveScene();
-        return scene.IsValid() && scene.name == LevelTwoSceneName;
+        if (!scene.IsValid()) return false;
+
+        switch (scene.name)
+        {
+            case LevelTwoSceneName:
+                shiftSeconds = LevelTwoColorShiftSeconds;
+                return true;
+            case LevelThreeSceneName:
+                shiftSeconds = LevelThreeColorShiftSeconds;
+                return true;
+            default:
+                return false;
+        }
     }
 
     static bool NameMatchesAnyKeyword(string name, string[] keywords)
