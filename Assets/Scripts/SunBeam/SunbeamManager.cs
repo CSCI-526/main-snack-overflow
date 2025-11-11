@@ -40,7 +40,7 @@ public class SunbeamManager : MonoBehaviour
             else
             {
                 // Optional feedback when player taps a civilian
-                KillTextController.Instance?.Show("Civilian Down...!\nSpeed Drop, Vision Blur!");
+                KillTextController.Instance?.Show("Civilian Down!\nSpeed Drop, Vision Blur!");
             }
 
             // Finally, do the shrink-and-destroy
