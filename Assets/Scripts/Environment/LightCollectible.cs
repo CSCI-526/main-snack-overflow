@@ -15,7 +15,8 @@ public class LightCollectible : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         var player = other.GetComponentInParent<PlayerMover>();
-        if (!player) return;
+        if (!PlayerMover.IsActivePlayer(player))
+            return;
 
         if (PlayerLightController.Instance != null)
             PlayerLightController.Instance.AddLightEnergy(lightReward);
