@@ -356,6 +356,28 @@ public class SpawnManager : MonoBehaviour
     public BoxCollider movementBounds;     // Bounds3D
     public PathShape[] impostorPaths;
 
+    [Header("Distribution")]
+    [Range(0.6f, 1f)]
+    public float spawnSpreadFactor = 1f;
+    [Range(0f, 0.3f)]
+    public float spawnEdgePadding = 0.08f;
+
+    [Header("Dynamic Density")]
+    [Tooltip("Minimum civilians per 100 square units of navigable area.")]
+    public float civiliansPerHundredSquareUnits = 1.15f;
+    [Tooltip("Minimum impostors per 100 square units of navigable area (unless red focus overrides).")]
+    public float impostorsPerHundredSquareUnits = 0.2f;
+    [Tooltip("Clamp range for auto-resolved civilian counts.")]
+    public Vector2Int civilianAutoCountRange = new Vector2Int(45, 140);
+    [Tooltip("Clamp range for auto-resolved impostor counts.")]
+    public Vector2Int impostorAutoCountRange = new Vector2Int(4, 14);
+    [Tooltip("Scales the inspector civilian count before density is applied.")]
+    [Range(1f, 2.5f)]
+    public float civilianCountMultiplier = 1.45f;
+    [Tooltip("Boosts density-derived civilian counts so large arenas feel full.")]
+    [Range(1f, 2f)]
+    public float civilianDensityMultiplier = 1.2f;
+
     [Header("Parents")]
     public Transform npcsParent;
     public Transform playerParent;
@@ -439,7 +461,8 @@ public class SpawnManager : MonoBehaviour
 
     void SpawnCivilians()
     {
-        for (int i = 0; i < civilianCount; i++)
+        int targetCivilianCount = ResolveCivilianCount();
+        for (int i = 0; i < targetCivilianCount; i++)
         {
             // Pick random spawn position within movement bounds
             Vector3 pos = GetRandomPointInMovementBounds();
@@ -474,7 +497,7 @@ public class SpawnManager : MonoBehaviour
         if (pairs.Length == 0) return;
 
         bool forceRedRules = IsRedFocusScene();
-        int impostorsToSpawn = forceRedRules ? 10 : impostorCount;
+        int impostorsToSpawn = ResolveImpostorCount(forceRedRules);
         int impostorColorId = forceRedRules ? DetermineRedFocusImpostorColorId() : -1;
 
         for (int i = 0; i < impostorsToSpawn; i++)
@@ -502,6 +525,35 @@ public class SpawnManager : MonoBehaviour
             var follower = npc.AddComponent<PathFollower>();
             follower.pathShape = path;
         }
+    }
+
+    int ResolveCivilianCount()
+    {
+        int baseline = Mathf.RoundToInt(Mathf.Max(0f, civilianCount) * civilianCountMultiplier);
+        float densityRaw = GetMovementPlaneArea() / 100f * civiliansPerHundredSquareUnits;
+        int densityCount = Mathf.RoundToInt(densityRaw * civilianDensityMultiplier);
+        int resolved = Mathf.Max(baseline, densityCount);
+        resolved = Mathf.Clamp(resolved, civilianAutoCountRange.x, civilianAutoCountRange.y);
+        return resolved;
+    }
+
+    int ResolveImpostorCount(bool forceRedRules)
+    {
+        int densityCount = Mathf.RoundToInt(GetMovementPlaneArea() / 100f * impostorsPerHundredSquareUnits);
+        int resolved = Mathf.Max(impostorCount, densityCount);
+        if (forceRedRules)
+            resolved = Mathf.Max(resolved, 10);
+        resolved = Mathf.Clamp(resolved, impostorAutoCountRange.x, impostorAutoCountRange.y);
+        return resolved;
+    }
+
+    float GetMovementPlaneArea()
+    {
+        if (!movementBounds)
+            return 0f;
+
+        Vector3 size = movementBounds.size;
+        return Mathf.Abs(size.x * size.y);
     }
 
 
@@ -834,32 +886,74 @@ public class SpawnManager : MonoBehaviour
     }
 
     Vector3 GetRandomPointInMovementBounds()
-{
-    if (movementBounds == null)
     {
-        Debug.LogError("MovementBounds not assigned on SpawnManager!");
-        return Vector3.zero;
+        if (!movementBounds)
+        {
+            Debug.LogError("MovementBounds not assigned on SpawnManager!");
+            return Vector3.zero;
+        }
+
+        float spacing = minimumSpawnSpacing;
+        for (int relax = 0; relax < spacingRelaxIterations; relax++)
+        {
+            for (int attempt = 0; attempt < maxAttemptsPerIteration; attempt++)
+            {
+                Vector3 candidate = ProjectToGround(SamplePointWithinBounds());
+                if (IsFarEnoughFromUsed(candidate, spacing))
+                {
+                    usedSpawnPositions.Add(candidate);
+                    return candidate;
+                }
+            }
+
+            spacing *= spacingRelaxFactor;
+        }
+
+        Vector3 fallback = ProjectToGround(SamplePointWithinBounds());
+        usedSpawnPositions.Add(fallback);
+        return fallback;
     }
 
-    BoxCollider box = movementBounds;
+    Vector3 SamplePointWithinBounds()
+    {
+        var box = movementBounds;
+        Vector3 halfSize = box.size * 0.5f;
+        float spread = Mathf.Clamp(spawnSpreadFactor, 0.1f, 1f);
+        float padPercent = Mathf.Clamp01(spawnEdgePadding);
 
-    float concentrationFactor = 0.5f;
+        float spanX = halfSize.x * spread;
+        float spanY = halfSize.y * spread;
+        float padX = spanX * padPercent;
+        float padY = spanY * padPercent;
 
-    Vector3 localPoint = new Vector3(
-        Random.Range(-0.5f, 0.5f) * box.size.x * concentrationFactor,
-        Random.Range(-0.5f, 0.5f) * box.size.y * concentrationFactor,
-        0f // thin axis since map is rotated -90° on X
-    );
+        float minX = -spanX + padX;
+        float maxX = spanX - padX;
+        float minY = -spanY + padY;
+        float maxY = spanY - padY;
 
-    // Convert to world coordinates
-    Vector3 worldPoint = box.transform.TransformPoint(box.center + localPoint);
+        float x = Random.Range(minX, maxX);
+        float y = Random.Range(minY, maxY);
 
-    // Project to ground (optional but helps with terrain unevenness)
-    worldPoint = ProjectToGround(worldPoint);
+        Vector3 localPoint = new Vector3(x, y, 0f);
+        return box.transform.TransformPoint(box.center + localPoint);
+    }
 
-    Debug.Log($"Spawned at: {worldPoint}");
-    return worldPoint;
-}
+    bool IsFarEnoughFromUsed(Vector3 candidate, float spacing)
+    {
+        if (spacing <= 0f || usedSpawnPositions.Count == 0)
+            return true;
+
+        float sqrSpacing = spacing * spacing;
+        for (int i = 0; i < usedSpawnPositions.Count; i++)
+        {
+            Vector3 existing = usedSpawnPositions[i];
+            Vector2 delta = new Vector2(existing.x - candidate.x, existing.z - candidate.z);
+            if (delta.sqrMagnitude < sqrSpacing)
+                return false;
+        }
+
+        return true;
+    }
 
     // Teammate's grounding helper for placing impostors on terrain/meshes
     Vector3 ProjectToGround(Vector3 position)
