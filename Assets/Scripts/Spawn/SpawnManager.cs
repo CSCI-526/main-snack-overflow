@@ -370,8 +370,10 @@ public class SpawnManager : MonoBehaviour
 
     const string LevelTwoSceneName = "LvL2";
     const string LevelThreeSceneName = "LvL3";
+    const string LevelFourSceneName = "LvL4";
     const float LevelTwoColorShiftSeconds = 15f;
     const float LevelThreeColorShiftSeconds = 15f;
+    const float LevelFourColorShiftSeconds = 15f;
     static readonly string[] ColorCycleKeywords = { "red", "orange", "pink", "yellow", "green" };
 
     int[] redFocusCivilianColorIdsCache;
@@ -806,6 +808,9 @@ public class SpawnManager : MonoBehaviour
                 return true;
             case LevelThreeSceneName:
                 shiftSeconds = LevelThreeColorShiftSeconds;
+                return true;
+            case LevelFourSceneName:
+                shiftSeconds = LevelFourColorShiftSeconds;
                 return true;
             default:
                 return false;

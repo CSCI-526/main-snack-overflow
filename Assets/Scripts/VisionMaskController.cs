@@ -47,7 +47,7 @@ public class VisionMaskController : MonoBehaviour
         if (group == null)
             group = gameObject.AddComponent<CanvasGroup>();
 
-        maskSuppressed = IsLevelThreeScene();
+        maskSuppressed = ShouldSuppressMask();
 
         currentRadius = initialRadius;
         ResetRadius();
@@ -128,9 +128,12 @@ public class VisionMaskController : MonoBehaviour
 
 
 
+    bool ShouldSuppressMask() => IsLevelThreeScene();
+
     bool IsLevelThreeScene()
     {
         var scene = SceneManager.GetActiveScene();
         return scene.IsValid() && scene.name == LevelThreeSceneName;
     }
+
 }

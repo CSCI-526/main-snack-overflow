@@ -56,6 +56,11 @@ public class SceneLoader : MonoBehaviour {
         SceneManager.LoadScene("LvL3");
     }
 
+    public void LoadLevel4() {
+        RestoreDefaultQuality();
+        SceneManager.LoadScene("LvL4");
+    }
+
     public void LoadHome() {
         RestoreDefaultQuality();
         GameMode.SetTutorial(false);
