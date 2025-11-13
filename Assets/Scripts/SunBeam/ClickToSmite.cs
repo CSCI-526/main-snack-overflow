@@ -128,6 +128,9 @@ public class ClickToSmite : MonoBehaviour
                     return;
 
                 var grs = GameRoundState.Instance;
+                var player = PlayerMover.Active;
+                if (player != null && player.IsStunned())
+                    return;
 
                 // If no ID, treat as wrong civilian
                 if (id == null)

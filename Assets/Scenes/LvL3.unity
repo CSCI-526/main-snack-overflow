@@ -1593,7 +1593,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.344, y: 0.61, z: -0.235}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -2806,7 +2806,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.082, y: 0.61, z: 0.111}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -2925,7 +2925,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.133, y: 0.61, z: -0.049}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -3100,7 +3100,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.041099977, y: 0.61, z: -0.0719}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -3219,7 +3219,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.041099977, y: 0.61, z: 0.0087}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -3447,14 +3447,14 @@ MonoBehaviour:
   startButton: {fileID: 87574499}
   skipButton: {fileID: 1568866783}
   visionMask: {fileID: 27488014}
-  fullText: Find 10 reds before the timer ends!
+  fullText: Keep an eye out for the changing impostor colour and eliminate the imposters!
   typingSpeed: 0.02
   timerController: {fileID: 1472231006}
   enableOnGameplay:
   - {fileID: 152959127}
   - {fileID: 914836417}
   autoStart: 1
-  autoStartDelay: 2.5
+  autoStartDelay: 4
 --- !u!4 &240446939
 Transform:
   m_ObjectHideFlags: 0
@@ -3948,7 +3948,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.105, y: 0.61, z: 0.338}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -4067,7 +4067,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.256, y: 0.61, z: 0.224}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -5496,7 +5496,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.336, y: 0.61, z: 0.338}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -6038,7 +6038,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.43, y: 0.61, z: 0.008}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -6472,7 +6472,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.355, y: 0.61, z: 0.338}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -6998,7 +6998,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Find 10 reds before the timer ends!
+  m_text: "Keep an eye out for the changing impostor colour \nand eliminate the imposters!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -7420,7 +7420,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.204, y: 0.61, z: -0.235}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -8200,7 +8200,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 1000, y: 500}
+  m_SizeDelta: {x: 1300, y: 560}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &563072212
 MonoBehaviour:
@@ -9260,7 +9260,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.309, y: 0.61, z: 0.111}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -11543,7 +11543,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.309, y: 0.61, z: -0.117}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -12954,7 +12954,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.063, y: 0.61, z: -0.235}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -14182,7 +14182,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.118, y: 0.61, z: 0.111}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -14826,7 +14826,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.43, y: 0.61, z: -0.117}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -16630,7 +16630,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.157, y: 0.61, z: 0.008}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -17587,7 +17587,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.034, y: 0.61, z: -0.117}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -19480,7 +19480,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.43, y: 0.61, z: 0.177}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -22200,7 +22200,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.067, y: 0.61, z: 0.224}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -22463,7 +22463,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.27, y: 0.61, z: -0.117}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -23601,7 +23601,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.161, y: 0.61, z: 0.338}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -24869,7 +24869,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0.116, y: 0.61, z: -0.117}
-  m_LocalScale: {x: 0.0105688125, y: 1, z: 0.009652812}
+  m_LocalScale: {x: 0.02, y: 1, z: 0.02}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 433086662}
@@ -25588,6 +25588,72 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2143169028}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &2101539374
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2101539375}
+  - component: {fileID: 2101539376}
+  m_Layer: 0
+  m_Name: LightOrbs
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2101539375
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2101539374}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 76.6, y: 0, z: 2.7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2101539376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2101539374}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c5df5f7e10514d84aa03d2e6c89eac6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  orbPositions:
+  - {x: -35, y: 0, z: -20}
+  - {x: -24, y: 0, z: 22}
+  - {x: -4, y: 0, z: -30}
+  - {x: 2, y: 0, z: 10}
+  - {x: 8, y: 0, z: -18}
+  - {x: 14, y: 0, z: 28}
+  - {x: 20, y: 0, z: -4}
+  - {x: 26, y: 0, z: 14}
+  - {x: 42, y: 0, z: 24}
+  orbHeight: 1.4
+  orbScale: 0.9
+  orbReward: 1
+  orbLightRange: 2.0
+  orbLightIntensity: 2.0
+  orbLightColor: {r: 1, g: 0.88235295, b: 0.40784314, a: 1}
+  orbMaterial: {fileID: 2100000, guid: 073f5ef474db34c469ec5d1364fd32b2, type: 2}
+  orbBobAmplitude: 0.35
+  orbBobFrequency: 1.65
+  orbRotationSpeed: 65
+  spawnOnStart: 1
+  orbName: Light Orb
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -25612,3 +25678,4 @@ SceneRoots:
   - {fileID: 1672995373}
   - {fileID: 1298239734}
   - {fileID: 685197728}
+  - {fileID: 2101539375}

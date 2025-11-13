@@ -1,9 +1,15 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class SunbeamManager : MonoBehaviour
 {
     public static SunbeamManager Instance { get; private set; }
     public GameObject sunbeamPrefab; // assign the Sunbeam prefab in Inspector
+    const string LevelThreeSceneName = "LvL3";
+    const string DefaultImpostorMessage = "Imposter Down!\nEyes Sharp, Feet Faster!";
+    const string DefaultCivilianMessage = "Civilian Down!\nSpeed Drop, Vision Blur!";
+    const string LevelThreeImpostorMessage = "Impostor down!\nFeet faster";
+    const string LevelThreeCivilianMessage = "Civilian down!\nSpeed drop";
 
     void Awake()
     {
@@ -30,17 +36,20 @@ public class SunbeamManager : MonoBehaviour
         // 3) Wrap the "on hit" callback so we can show the popup AND then do the cute death
         void OnBeamHit()
         {
+            bool lvlThree = SceneManager.GetActiveScene().name == LevelThreeSceneName;
             if (isImpostor)
             {
                 // Center-screen popup for ~1–2s (your ImposterKilledText/Popup controller)
-                KillTextController.Instance?.Show("Imposter Down!\nEyes Sharp, Feet Faster!");
+                string message = lvlThree ? LevelThreeImpostorMessage : DefaultImpostorMessage;
+                KillTextController.Instance?.Show(message);
                 // (Optional) score/remaining-impostors bookkeeping can go here too
                 // ImpostorTracker.Instance?.OnImpostorKilled();
             }
             else
             {
                 // Optional feedback when player taps a civilian
-                KillTextController.Instance?.Show("Civilian Down...!\nSpeed Drop, Vision Blur!");
+                string message = lvlThree ? LevelThreeCivilianMessage : DefaultCivilianMessage;
+                KillTextController.Instance?.Show(message);
             }
 
             // Finally, do the shrink-and-destroy
