@@ -12510,7 +12510,7 @@ MonoBehaviour:
   - {fileID: 152959127}
   - {fileID: 914836417}
   autoStart: 1
-  autoStartDelay: 2.5
+  autoStartDelay: 3.5
 --- !u!4 &240446939
 Transform:
   m_ObjectHideFlags: 0
