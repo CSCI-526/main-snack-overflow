@@ -3447,14 +3447,14 @@ MonoBehaviour:
   startButton: {fileID: 87574499}
   skipButton: {fileID: 1568866783}
   visionMask: {fileID: 27488014}
-  fullText: Keep an eye out for the impostor colour and eliminate the imposters!
+  fullText: Keep an eye out for the changing impostor colour and eliminate the imposters!
   typingSpeed: 0.02
   timerController: {fileID: 1472231006}
   enableOnGameplay:
   - {fileID: 152959127}
   - {fileID: 914836417}
   autoStart: 1
-  autoStartDelay: 2.5
+  autoStartDelay: 4
 --- !u!4 &240446939
 Transform:
   m_ObjectHideFlags: 0
@@ -7103,7 +7103,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Keep an eye out for the impostor colour \nand eliminate the imposters!"
+  m_text: "Keep an eye out for the changing impostor colour \nand eliminate the imposters!"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
