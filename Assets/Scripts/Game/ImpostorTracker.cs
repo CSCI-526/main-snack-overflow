@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
@@ -134,20 +135,62 @@ public class ImpostorTracker : MonoBehaviour
             }
         }
 
+        if (!exitButton)
+            exitButton = FindWinRetryButton();
+
         if (!exitButton) return;
 
-        bool isLevelTwo = SceneManager.GetActiveScene().name == "LvL2";
+        string sceneName = SceneManager.GetActiveScene().name;
+        bool isLevelTwo = sceneName == "LvL2";
+        bool isLevelThree = sceneName == "LvL3";
         var label = exitButton.GetComponentInChildren<TMP_Text>(true);
-        if (label) label.text = isLevelTwo ? "Exit" : "Play Level 2";
 
-        if (exitButton.targetGraphic) exitButton.targetGraphic.raycastTarget = true;
         ResetButtonOnClick(exitButton);
         if (isLevelTwo)
-            exitButton.onClick.AddListener(ReturnToHome);
+            ApplyButtonTextPadding(exitButton, new Vector2(40f, 12f));
         else
+            ApplyButtonTextPadding(exitButton, new Vector2(24f, 12f));
+
+        if (isLevelThree)
+        {
+            if (label) label.text = "Exit";
+            CenterButton(exitButton);
+            exitButton.onClick.AddListener(ReturnToHome);
+        }
+        else if (isLevelTwo)
+        {
+            if (label) label.text = "Play Level 3";
+            EnsureButtonWidth(exitButton, 320f);
+            exitButton.onClick.AddListener(LoadLevelThree);
+        }
+        else
+        {
+            if (label) label.text = "Play Level 2";
             exitButton.onClick.AddListener(LoadLevelTwo);
+        }
+
+        if (exitButton.targetGraphic) exitButton.targetGraphic.raycastTarget = true;
     }
 
+    Button FindWinRetryButton()
+    {
+        if (!winPanel)
+            return null;
+
+        foreach (var button in winPanel.GetComponentsInChildren<Button>(true))
+        {
+            if (!button) continue;
+            if (button.name == "WinRetry" || button.name == "Retry")
+                return button;
+
+            var label = button.GetComponentInChildren<TMP_Text>(true);
+            var text = label ? label.text.Trim().ToLowerInvariant() : string.Empty;
+            if (text.Contains("retry"))
+                return button;
+        }
+
+        return null;
+    }
 
     void ResetButtonOnClick(Button button)
     {
@@ -160,6 +203,40 @@ public class ImpostorTracker : MonoBehaviour
         field.SetValue(button, evt);
     }
 
+    void ApplyButtonTextPadding(Button button, Vector2 padding)
+    {
+        if (!button) return;
+
+        var label = button.GetComponentInChildren<TMP_Text>(true);
+        if (!label) return;
+
+        var rect = label.rectTransform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(padding.x, padding.y);
+        rect.offsetMax = new Vector2(-padding.x, -padding.y);
+
+        label.enableWordWrapping = false;
+        label.overflowMode = TextOverflowModes.Truncate;
+        label.alignment = TextAlignmentOptions.Midline;
+    }
+
+    void CenterButton(Button button)
+    {
+        if (!button) return;
+        if (button.TryGetComponent<RectTransform>(out var rect))
+            rect.anchoredPosition = Vector2.zero;
+    }
+
+    void EnsureButtonWidth(Button button, float minWidth)
+    {
+        if (!button) return;
+        if (button.TryGetComponent<RectTransform>(out var rect))
+        {
+            if (rect.sizeDelta.x < minWidth)
+                rect.sizeDelta = new Vector2(minWidth, rect.sizeDelta.y);
+        }
+    }
 
     void ReturnToHome()
     {
@@ -187,6 +264,18 @@ public class ImpostorTracker : MonoBehaviour
             SceneManager.LoadScene("LvL2");
         else
             Debug.LogWarning("Level 2 requested before it was unlocked.");
+    }
+
+    void LoadLevelThree()
+    {
+        var loader = FindObjectOfType<SceneLoader>(true);
+        if (loader != null)
+        {
+            loader.LoadLevel3();
+            return;
+        }
+
+        SceneManager.LoadScene("LvL3");
     }
 
 
