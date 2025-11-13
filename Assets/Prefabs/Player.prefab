@@ -175,13 +175,20 @@ MonoBehaviour:
   targetLight: {fileID: 884736000000000002}
   minRange: 200
   maxRange: 500
-  perCollectibleIncrease: 10
+  perCollectibleIncrease: 30
   passiveDecayPerSecond: 0.5
   linkIntensityToRange: 1
-  minIntensity: 80
-  maxIntensity: 500
-  perCollectibleIntensityIncrease: 50
-  passiveIntensityDecayPerSecond: 25
+  minIntensity: 50
+  maxIntensity: 290
+  perCollectibleIntensityIncrease: 35
+  passiveIntensityDecayPerSecond: 15
+  pickupFlashMultiplier: 1.08
+  pickupFlashDuration: 0.8
+  playerGlowRenderers:
+  - {fileID: 7234331652994243568}
+  playerGlowColor: {r: 1, g: 0.8705883, b: 0.5411765, a: 1}
+  playerGlowIntensity: 0.7
+  playerGlowDuration: 1.5
   onlyActiveInLevelThree: 1
 --- !u!1 &884736000000000000
 GameObject:

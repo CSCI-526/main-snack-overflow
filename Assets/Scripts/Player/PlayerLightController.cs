@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -17,11 +18,21 @@ public class PlayerLightController : MonoBehaviour
     [Header("Intensity Settings")]
     public bool linkIntensityToRange = true;
     public float minIntensity = 80f;
-    public float maxIntensity = 220f;
+    public float maxIntensity = 500f;
     [Tooltip("Used only when linkIntensityToRange is disabled.")]
-    public float perCollectibleIntensityIncrease = 15f;
+    public float perCollectibleIntensityIncrease = 100f;
     [Tooltip("Used only when linkIntensityToRange is disabled.")]
     public float passiveIntensityDecayPerSecond = 5f;
+
+    [Header("Pickup Feedback - Light")]
+    public float pickupFlashMultiplier = 1.08f;
+    public float pickupFlashDuration = 0.8f;
+
+    [Header("Pickup Feedback - Player Glow")]
+    public Renderer[] playerGlowRenderers;
+    public Color playerGlowColor = new Color(1f, 0.87f, 0.54f);
+    public float playerGlowIntensity = 1.1f;
+    public float playerGlowDuration = 1.2f;
 
     public bool onlyActiveInLevelThree = true;
 
@@ -31,6 +42,13 @@ public class PlayerLightController : MonoBehaviour
     float maxRangeRuntime;
     float minIntensityRuntime;
     float maxIntensityRuntime;
+    float baseIntensityValue;
+    Coroutine pickupFlashRoutine;
+    float pickupFlashBlend;
+    Coroutine playerGlowRoutine;
+    float playerGlowBlend;
+    MaterialPropertyBlock[] glowBlocks;
+    Color[] glowBaseEmission;
 
     void Awake()
     {
@@ -53,6 +71,7 @@ public class PlayerLightController : MonoBehaviour
             else
                 SetIntensity(targetLight.intensity);
         }
+        CachePlayerGlowData();
 
         RefreshActivation(SceneManager.GetActiveScene());
         SceneManager.sceneLoaded += HandleSceneLoaded;
@@ -60,6 +79,10 @@ public class PlayerLightController : MonoBehaviour
 
     void OnDestroy()
     {
+        if (pickupFlashRoutine != null)
+            StopCoroutine(pickupFlashRoutine);
+        if (playerGlowRoutine != null)
+            StopCoroutine(playerGlowRoutine);
         if (Instance == this)
             Instance = null;
         SceneManager.sceneLoaded -= HandleSceneLoaded;
@@ -119,7 +142,9 @@ public class PlayerLightController : MonoBehaviour
         InitializeRuntimeBounds();
         SetRange(targetLight.range + amount * perCollectibleIncrease);
         if (!linkIntensityToRange)
-            SetIntensity(targetLight.intensity + amount * perCollectibleIntensityIncrease);
+            SetIntensity(baseIntensityValue + amount * perCollectibleIntensityIncrease);
+        TriggerPickupFlash();
+        TriggerPlayerGlow();
     }
 
     void SetRange(float value)
@@ -133,7 +158,8 @@ public class PlayerLightController : MonoBehaviour
     void SetIntensity(float value)
     {
         InitializeRuntimeBounds();
-        targetLight.intensity = Mathf.Clamp(value, IntensityMin, IntensityMax);
+        baseIntensityValue = Mathf.Clamp(value, IntensityMin, IntensityMax);
+        ApplyFinalIntensity();
     }
 
     void SyncIntensityToRange()
@@ -146,6 +172,14 @@ public class PlayerLightController : MonoBehaviour
         float lerp = rangeSpan > 0.001f ? Mathf.InverseLerp(RangeMin, RangeMax, targetLight.range) : 1f;
         float next = Mathf.Lerp(IntensityMin, IntensityMax, lerp);
         SetIntensity(next);
+    }
+
+    void ApplyFinalIntensity()
+    {
+        if (!targetLight)
+            return;
+        float flashFactor = Mathf.Lerp(1f, Mathf.Max(1f, pickupFlashMultiplier), pickupFlashBlend);
+        targetLight.intensity = baseIntensityValue * flashFactor;
     }
 
     void InitializeRuntimeBounds()
@@ -170,8 +204,118 @@ public class PlayerLightController : MonoBehaviour
 
         float maxIntensityCandidate = maxIntensity > 0f ? maxIntensity : currentIntensity;
         maxIntensityRuntime = Mathf.Max(minIntensityRuntime, maxIntensityCandidate);
-
+        baseIntensityValue = Mathf.Clamp(targetLight.intensity, IntensityMin, IntensityMax);
         boundsInitialized = true;
+    }
+
+    void TriggerPickupFlash()
+    {
+        if (!targetLight)
+            return;
+
+        if (pickupFlashDuration <= 0f || pickupFlashMultiplier <= 1f)
+            return;
+
+        pickupFlashBlend = 1f;
+        if (pickupFlashRoutine != null)
+            StopCoroutine(pickupFlashRoutine);
+        pickupFlashRoutine = StartCoroutine(PickupFlashCoroutine());
+    }
+
+    IEnumerator PickupFlashCoroutine()
+    {
+        float timer = 0f;
+        while (timer < pickupFlashDuration)
+        {
+            float normalized = Mathf.Clamp01(timer / Mathf.Max(0.0001f, pickupFlashDuration));
+            pickupFlashBlend = 1f - Mathf.SmoothStep(0f, 1f, normalized);
+            ApplyFinalIntensity();
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        pickupFlashBlend = 0f;
+        ApplyFinalIntensity();
+        pickupFlashRoutine = null;
+    }
+
+    void CachePlayerGlowData()
+    {
+        if (playerGlowRenderers == null || playerGlowRenderers.Length == 0)
+            return;
+
+        glowBlocks = new MaterialPropertyBlock[playerGlowRenderers.Length];
+        glowBaseEmission = new Color[playerGlowRenderers.Length];
+
+        for (int i = 0; i < playerGlowRenderers.Length; i++)
+        {
+            var rend = playerGlowRenderers[i];
+            if (!rend)
+                continue;
+            if (glowBlocks[i] == null)
+                glowBlocks[i] = new MaterialPropertyBlock();
+            var shared = rend.sharedMaterial;
+            Color baseEmission = Color.black;
+            if (shared && shared.HasProperty("_EmissionColor"))
+            {
+                baseEmission = shared.GetColor("_EmissionColor");
+                shared.EnableKeyword("_EMISSION");
+            }
+            glowBaseEmission[i] = baseEmission;
+        }
+        ApplyPlayerGlow(0f);
+    }
+
+    void TriggerPlayerGlow()
+    {
+        if (playerGlowRenderers == null || playerGlowRenderers.Length == 0)
+            return;
+        if (playerGlowDuration <= 0f || playerGlowIntensity <= 0f)
+            return;
+
+        playerGlowBlend = 1f;
+        if (playerGlowRoutine != null)
+            StopCoroutine(playerGlowRoutine);
+        playerGlowRoutine = StartCoroutine(PlayerGlowCoroutine());
+        ApplyPlayerGlow(playerGlowBlend);
+    }
+
+    IEnumerator PlayerGlowCoroutine()
+    {
+        float timer = 0f;
+        while (timer < playerGlowDuration)
+        {
+            float normalized = Mathf.Clamp01(timer / Mathf.Max(0.0001f, playerGlowDuration));
+            float eased = 1f - Mathf.SmoothStep(0f, 1f, normalized);
+            playerGlowBlend = eased;
+            ApplyPlayerGlow(playerGlowBlend);
+            timer += Time.deltaTime;
+            yield return null;
+        }
+        playerGlowBlend = 0f;
+        ApplyPlayerGlow(0f);
+        playerGlowRoutine = null;
+    }
+
+    void ApplyPlayerGlow(float blend)
+    {
+        if (playerGlowRenderers == null || glowBlocks == null)
+            return;
+        float blendClamped = Mathf.Clamp01(blend);
+        float scale = Mathf.Lerp(1f, Mathf.Max(1f, playerGlowIntensity), blendClamped);
+        for (int i = 0; i < playerGlowRenderers.Length; i++)
+        {
+            var rend = playerGlowRenderers[i];
+            if (!rend)
+                continue;
+            var block = glowBlocks[i];
+            if (block == null)
+                block = glowBlocks[i] = new MaterialPropertyBlock();
+            Color baseEmission = glowBaseEmission != null && i < glowBaseEmission.Length ? glowBaseEmission[i] : Color.black;
+            Color additive = playerGlowColor * playerGlowIntensity * blendClamped;
+            Color targetEmission = baseEmission * scale + additive;
+            block.SetColor("_EmissionColor", targetEmission);
+            rend.SetPropertyBlock(block);
+        }
     }
 
     float RangeMin => minRangeRuntime;
