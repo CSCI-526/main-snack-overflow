@@ -28,7 +28,7 @@ public class VisionMaskController : MonoBehaviour
     [Tooltip("Radius will slowly decay toward this value after it has been increased.")]
     public float passiveShrinkFloor = 0.26f;
     [Tooltip("Units per second the radius shrinks when above the floor.")]
-    public float passiveShrinkPerSecond = 0.008f;
+    public float passiveShrinkPerSecond = 0.006f;
 
     bool maskSuppressed;
 
