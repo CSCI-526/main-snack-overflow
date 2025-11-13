@@ -112,6 +112,14 @@ RectTransform _rt;
 
         SetTopLeftButtonsVisible(true);
 
+        if (AnalyticsManager.I != null)
+        {
+            AnalyticsManager.I.StartLevelAttempt();
+
+            // RL start: impostors are now identifiable and the player can act
+            AnalyticsManager.I.OnImpostorIdentifiable();
+        }
+
     }
 
     public void StopTimer() => isRunning = false;

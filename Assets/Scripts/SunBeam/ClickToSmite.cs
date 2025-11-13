@@ -165,7 +165,11 @@ public class ClickToSmite : MonoBehaviour
 
         // ✅ Track correct hit
         if (AnalyticsManager.I != null)
+        {
+            AnalyticsManager.I.OnFirstTargetingAction();
             AnalyticsManager.I.OnCorrectHit();
+        }
+
 
         // Notify that an impostor was killed
         if (!SuppressGameState && id != null && id.isImpostor)
@@ -182,6 +186,8 @@ public class ClickToSmite : MonoBehaviour
         PreventDoubleHit(death);
 
         TrackShotFired();
+        if (AnalyticsManager.I != null)
+            AnalyticsManager.I.OnFirstTargetingAction();
 
         // Optional: if you want to track total "wrong hits" separately
         // if (AnalyticsManager.I != null)

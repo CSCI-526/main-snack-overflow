@@ -60,7 +60,7 @@ public class PauseRestartUI : MonoBehaviour
         {
 
             if (AnalyticsManager.I != null)
-                AnalyticsManager.I.RegisterPauseClicked();
+                AnalyticsManager.I.OnPauseClicked();
 
             Time.timeScale = 0f;
             if (timer) timer.StopTimer();

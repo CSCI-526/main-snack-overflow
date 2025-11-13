@@ -112,6 +112,9 @@ public bool logSpeed = false;
             rb.velocity = Vector3.zero;
         else
             rb.velocity = Vector3.MoveTowards(vel, target, accel * Time.fixedDeltaTime);
+
+        if (AnalyticsManager.I != null)
+            AnalyticsManager.I.SampleSpeed(rb.velocity.magnitude);
     }
 
     public bool EnterMud(MudZone zone, float multiplier)

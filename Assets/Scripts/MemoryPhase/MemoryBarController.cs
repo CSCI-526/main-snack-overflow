@@ -449,10 +449,6 @@ if (pauseGameDuringMemory) Time.timeScale = 1f;
 var timer = FindObjectOfType<TimerController>(true);
 if (timer != null) timer.StartTimer(60f);
 
-// === Analytics: gameplay officially begins now ===
-if (AnalyticsManager.I != null)
-    AnalyticsManager.I.OnAttemptStart();
-
 OnMemoryPhaseComplete?.Invoke();
 
     }

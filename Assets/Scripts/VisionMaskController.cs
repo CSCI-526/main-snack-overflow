@@ -78,6 +78,10 @@ public class VisionMaskController : MonoBehaviour
             minClamp = Mathf.Max(minClamp, minRadiusWhileAlive);
 
         currentRadius = Mathf.Clamp(newRadius, minClamp, maxRadius);
+
+        if (AnalyticsManager.I != null)
+            AnalyticsManager.I.SampleVisibility(currentRadius);
+
         if (maskSuppressed || visionMaskMaterial == null)
             return;
         visionMaskMaterial.SetFloat("_Radius", currentRadius);
