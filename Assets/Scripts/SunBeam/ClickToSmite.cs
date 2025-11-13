@@ -224,7 +224,7 @@ public class ClickToSmite : MonoBehaviour
             return;
         }
 
-        float delta = increase ? 0.15f : -0.15f;
+        float delta = increase ? 0.05f : -0.05f;
         float target = visionMaskController.currentRadius + delta;
         visionMaskController.UpdateRadius(target);
 
