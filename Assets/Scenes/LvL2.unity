@@ -15589,18 +15589,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 228ee16ae5325dc438229cf0cd94bbdf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  directFormURL: https://docs.google.com/forms/d/e/1FAIpQLSeYAPf5Iatz8b0AW7qiql8Y_ayzh9CQJz4IDQOzT1RyadnN5Q/formResponse
-  webglProxyURL: https://script.google.com/macros/s/AKfycbxyXymUWxHgFTOnetRSzfjaW3TFVetcLdYIURI6rZa2oBaBbch7OMqg3E2xfdMuCseo/exec
-  formURL: https://docs.google.com/forms/u/0/d/1P8rR4AOV8ZMf45L2DIcudoTJKeFQ2eBPT77Nwn9rsa4/formResponse
-  sharedSecret: 
-  e_sessionId: entry.1330219283
-  e_levelId: entry.1013061301
-  e_shotsFired: entry.650746069
-  e_correctHits: entry.1310355990
-  e_accuracyPct: entry.792927461
-  e_timeTakenSec: entry.1684774599
-  e_completed: entry.1419990853
-  e_pauseClicks: entry.1105048103
 --- !u!114 &1298239733
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15614,6 +15602,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sender: {fileID: 0}
+  attemptNumberInSession: 0
 --- !u!4 &1298239734
 Transform:
   m_ObjectHideFlags: 0
@@ -15791,7 +15780,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Play Level 3
+  m_text: Exit
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
