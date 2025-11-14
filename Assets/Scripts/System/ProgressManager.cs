@@ -5,7 +5,7 @@ public static class ProgressManager {
     public static void SetLevel1Complete() => PlayerPrefs.SetInt(L1_COMPLETE, 1);
     public static bool IsLevel1Complete()   => PlayerPrefs.GetInt(L1_COMPLETE, 0) == 1;
     public static bool IsLevelUnlocked(int level)
-        => level <= 1 || (level == 2 && IsLevel1Complete());
+        => level <= 1 || IsLevel1Complete();
 
     public static void ResetAllProgress() {
         PlayerPrefs.DeleteKey(L1_COMPLETE);

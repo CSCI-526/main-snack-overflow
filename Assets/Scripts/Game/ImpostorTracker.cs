@@ -143,6 +143,7 @@ public class ImpostorTracker : MonoBehaviour
         string sceneName = SceneManager.GetActiveScene().name;
         bool isLevelTwo = sceneName == "LvL2";
         bool isLevelThree = sceneName == "LvL3";
+        bool isLevelFour = sceneName == "LvL4";
         var label = exitButton.GetComponentInChildren<TMP_Text>(true);
 
         ResetButtonOnClick(exitButton);
@@ -151,11 +152,17 @@ public class ImpostorTracker : MonoBehaviour
         else
             ApplyButtonTextPadding(exitButton, new Vector2(24f, 12f));
 
-        if (isLevelThree)
+        if (isLevelFour)
         {
             if (label) label.text = "Exit";
             CenterButton(exitButton);
             exitButton.onClick.AddListener(ReturnToHome);
+        }
+        else if (isLevelThree)
+        {
+            if (label) label.text = "Play Level 4";
+            EnsureButtonWidth(exitButton, 320f);
+            exitButton.onClick.AddListener(LoadLevelFour);
         }
         else if (isLevelTwo)
         {
@@ -276,6 +283,18 @@ public class ImpostorTracker : MonoBehaviour
         }
 
         SceneManager.LoadScene("LvL3");
+    }
+
+    void LoadLevelFour()
+    {
+        var loader = FindObjectOfType<SceneLoader>(true);
+        if (loader != null)
+        {
+            loader.LoadLevel4();
+            return;
+        }
+
+        SceneManager.LoadScene("LvL4");
     }
 
 

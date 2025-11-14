@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 public class HomeLevelButtons : MonoBehaviour {
-    public Button level1Btn, level2Btn;
-    public GameObject level2LockIcon;
+    public Button level1Btn, level2Btn, level3Btn, level4Btn;
+    public GameObject level2LockIcon, level3LockIcon, level4LockIcon;
 #if UNITY_EDITOR
     [SerializeField] bool resetProgressEachPlayInEditor = true;
 #endif
@@ -19,10 +19,16 @@ public class HomeLevelButtons : MonoBehaviour {
     void Start() => RefreshLevelLocks();
 
     void RefreshLevelLocks() {
-        if (!level2Btn) return;
+        UpdateLevelLock(level2Btn, level2LockIcon, 2);
+        UpdateLevelLock(level3Btn, level3LockIcon, 3);
+        UpdateLevelLock(level4Btn, level4LockIcon, 4);
+    }
 
-        bool level2Unlocked = ProgressManager.IsLevelUnlocked(2);
-        level2Btn.interactable = level2Unlocked;
-        if (level2LockIcon) level2LockIcon.SetActive(!level2Unlocked);
+    void UpdateLevelLock(Button button, GameObject lockIcon, int level) {
+        if (!button) return;
+
+        bool unlocked = ProgressManager.IsLevelUnlocked(level);
+        button.interactable = unlocked;
+        if (lockIcon) lockIcon.SetActive(!unlocked);
     }
 }

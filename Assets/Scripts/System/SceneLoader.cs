@@ -52,11 +52,21 @@ public class SceneLoader : MonoBehaviour {
         SceneManager.LoadScene("LvL2");
     }
     public void LoadLevel3() {
+        if (!ProgressManager.IsLevelUnlocked(3))
+        {
+            Debug.LogWarning("Tried to load Level 3 before it was unlocked.");
+            return;
+        }
         SetQualitySafely(LevelThreeQuality);
         SceneManager.LoadScene("LvL3");
     }
 
     public void LoadLevel4() {
+        if (!ProgressManager.IsLevelUnlocked(4))
+        {
+            Debug.LogWarning("Tried to load Level 4 before it was unlocked.");
+            return;
+        }
         RestoreDefaultQuality();
         SceneManager.LoadScene("LvL4");
     }
