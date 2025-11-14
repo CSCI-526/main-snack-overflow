@@ -9,6 +9,7 @@ public class Level2TutorialController : MonoBehaviour
     enum Step
     {
         Inactive,
+        ShowImpostorColor,
         ShowPothole,
         ShowMud,
         Finished
@@ -45,6 +46,8 @@ public class Level2TutorialController : MonoBehaviour
     TextMeshProUGUI messageText;
     Button continueButton;
     Button skipButton;
+    float savedVisionRadius = -1f;
+    bool visionRadiusCaptured;
 
     Step currentStep = Step.Inactive;
     Transform arrowTarget;
@@ -122,6 +125,7 @@ public class Level2TutorialController : MonoBehaviour
         timer = mgr ? mgr.timerController : FindObjectOfType<TimerController>(true);
         visionMask = VisionMaskController.Instance;
         playerMover = FindObjectOfType<PlayerMover>(true);
+        CaptureVisionRadius();
 
         CapturePlayerState();
         tutorialCenter = savedPlayerPosition;
@@ -132,12 +136,11 @@ public class Level2TutorialController : MonoBehaviour
 
         Time.timeScale = 1f;
         instructions?.SetVisionMaskActive(true);
-        visionMask?.UpdateRadius(visionMask.initialRadius);
 
         mainCam = Camera.main;
         tutorialActive = true;
-        currentStep = Step.ShowPothole;
-        ShowPotholeMessage();
+        currentStep = Step.ShowImpostorColor;
+        ShowImpostorColorMessage();
         return true;
     }
 
@@ -164,6 +167,31 @@ public class Level2TutorialController : MonoBehaviour
             rb.velocity = Vector3.zero;
         playerMover.enabled = playerMoverWasEnabled;
         playerStateCaptured = false;
+    }
+
+    void ShowImpostorColorMessage()
+    {
+        currentStep = Step.ShowImpostorColor;
+        string message =
+            "<b>Watch the current " +
+            "<color=#FF4D4D>I</color>" +
+            "<color=#2ECC71>m</color>" +
+            "<color=#3498DB>p</color>" +
+            "<color=#FF69B4>o</color>" +
+            "<color=#F1C40F>s</color>" +
+            "<color=#FF4D4D>t</color>" +
+            "<color=#2ECC71>e</color>" +
+            "<color=#3498DB>r</color> color</b>\n" +
+            "Their identifying color shifts every 15 seconds.\n" +
+            "Keep an eye on the change so you do not lose track.";
+
+        SetMessage(message);
+
+        continueButton.onClick.RemoveAllListeners();
+        continueButton.onClick.AddListener(ShowPotholeMessage);
+        continueButton.gameObject.SetActive(true);
+        continueButton.interactable = true;
+        ConfigureSkipButton(true);
     }
 
     void ShowPotholeMessage()
@@ -224,7 +252,7 @@ public class Level2TutorialController : MonoBehaviour
         if (timer != null)
             timer.StartTimer(60f);
 
-        visionMask?.UpdateRadius(visionMask.initialRadius);
+        RestoreVisionRadius();
         CleanupTutorialHazards();
     }
 
@@ -368,9 +396,6 @@ public class Level2TutorialController : MonoBehaviour
             if (playerMover.TryGetComponent<Rigidbody>(out var rb))
                 rb.velocity = Vector3.zero;
         }
-
-        if (visionMask)
-            visionMask.UpdateRadius(Mathf.Max(visionMask.initialRadius, 0.38f));
     }
 
     Transform FindTargetWithTag(string tag)
@@ -506,6 +531,7 @@ public class Level2TutorialController : MonoBehaviour
             FinishTutorial();
         else
             CleanupTutorialHazards();
+        RestoreVisionRadius();
     }
 
     void OnDestroy()
@@ -559,5 +585,21 @@ public class Level2TutorialController : MonoBehaviour
         if (cachedFont == null)
             cachedFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
         return cachedFont;
+    }
+
+    void CaptureVisionRadius()
+    {
+        if (visionMask == null || visionRadiusCaptured)
+            return;
+        savedVisionRadius = visionMask.currentRadius;
+        visionRadiusCaptured = true;
+    }
+
+    void RestoreVisionRadius()
+    {
+        if (!visionRadiusCaptured || visionMask == null)
+            return;
+        visionMask.UpdateRadius(savedVisionRadius);
+        visionRadiusCaptured = false;
     }
 }
