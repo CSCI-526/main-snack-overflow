@@ -24,6 +24,7 @@ public class Level2TutorialController : MonoBehaviour
     TimerController timer;
     VisionMaskController visionMask;
     PlayerMover playerMover;
+    SpawnManager spawner;
 
     Vector3 savedPlayerPosition;
     Quaternion savedPlayerRotation;
@@ -48,6 +49,14 @@ public class Level2TutorialController : MonoBehaviour
     Button skipButton;
     float savedVisionRadius = -1f;
     bool visionRadiusCaptured;
+    GameObject tutorialImpostor;
+    Renderer[] tutorialImpostorRenderers;
+    Material[] tutorialImpostorMaterials;
+    RectTransform arrowRoot;
+    RectTransform arrowShaft;
+    RectTransform arrowHead;
+    float colorSwapTimer = -1f;
+    bool colorSwapTriggered;
 
     Step currentStep = Step.Inactive;
     Transform arrowTarget;
@@ -57,6 +66,12 @@ public class Level2TutorialController : MonoBehaviour
     static readonly Vector2 MessageSize = new Vector2(660f, 210f);
     static readonly Vector2 MessageAnchor = new Vector2(0.5f, 0.78f);
     static readonly Vector2 MessageOffset = Vector2.zero;
+    static readonly Vector2 ArrowTailOffset = new(-140f, 55f);
+    const float ArrowHeadSize = 26f;
+    const float ArrowThickness = 12f;
+    const float ArrowTargetHeight = 1.4f;
+    static readonly Color TutorialRed = new Color(0.93f, 0.17f, 0.19f);
+    static readonly Color TutorialOrange = new Color(1f, 0.57f, 0.07f);
 
     public static bool TryBeginTutorial(InstructionsManager mgr)
     {
@@ -125,6 +140,7 @@ public class Level2TutorialController : MonoBehaviour
         timer = mgr ? mgr.timerController : FindObjectOfType<TimerController>(true);
         visionMask = VisionMaskController.Instance;
         playerMover = FindObjectOfType<PlayerMover>(true);
+        spawner = FindObjectOfType<SpawnManager>();
         CaptureVisionRadius();
 
         CapturePlayerState();
@@ -172,30 +188,25 @@ public class Level2TutorialController : MonoBehaviour
     void ShowImpostorColorMessage()
     {
         currentStep = Step.ShowImpostorColor;
-        string message =
-            "<b>Watch the current " +
-            "<color=#FF4D4D>I</color>" +
-            "<color=#2ECC71>m</color>" +
-            "<color=#3498DB>p</color>" +
-            "<color=#FF69B4>o</color>" +
-            "<color=#F1C40F>s</color>" +
-            "<color=#FF4D4D>t</color>" +
-            "<color=#2ECC71>e</color>" +
-            "<color=#3498DB>r</color> color</b>\n" +
-            "Their identifying color shifts every 15 seconds.\n" +
-            "Keep an eye on the change so you do not lose track.";
+        SetupTutorialImpostor();
+        colorSwapTimer = 15f;
+        colorSwapTriggered = false;
+        UpdateImpostorColor(TutorialRed);
+        UpdateImpostorPreviewMessage();
+        arrowRoot?.gameObject.SetActive(true);
 
-        SetMessage(message);
+        continueButton.gameObject.SetActive(false);
+        continueButton.interactable = false;
 
         continueButton.onClick.RemoveAllListeners();
         continueButton.onClick.AddListener(ShowPotholeMessage);
-        continueButton.gameObject.SetActive(true);
-        continueButton.interactable = true;
         ConfigureSkipButton(true);
     }
 
     void ShowPotholeMessage()
     {
+        HideImpostorArrow();
+        CleanupTutorialImpostor();
         string message =
             "<b>Avoid <color=#5C5C5C>Grey Potholes</color></b>\n" +
             "Stepping on a pothole puts you in a temporary timeout.\n" +
@@ -213,6 +224,8 @@ public class Level2TutorialController : MonoBehaviour
 
     void ShowMudMessage()
     {
+        HideImpostorArrow();
+        CleanupTutorialImpostor();
         string message =
             "<b>Watch the <color=#5C2B0F>Brown Mud Patches</color></b>\n" +
             "Mud patches slow your movement speed.\n" +
@@ -254,6 +267,7 @@ public class Level2TutorialController : MonoBehaviour
 
         RestoreVisionRadius();
         CleanupTutorialHazards();
+        CleanupTutorialImpostor();
     }
 
     void EnsureUI()
@@ -306,6 +320,7 @@ public class Level2TutorialController : MonoBehaviour
         continueButton = CreateButton("ContinueButton", new Vector2(0.5f, 0.27f), "Continue", new Color(0.9f, 0.25f, 0.28f, 0.95f));
         skipButton = CreateButton("SkipTutorialButton", new Vector2(0.5f, 0.18f), "Skip Tutorial", new Color(0.25f, 0.28f, 0.33f, 0.95f));
         skipButton.onClick.AddListener(FinishTutorial);
+        EnsureArrow();
     }
 
     Button CreateButton(string name, Vector2 anchor, string label, Color color)
@@ -345,6 +360,45 @@ public class Level2TutorialController : MonoBehaviour
         return button;
     }
 
+    void EnsureArrow()
+    {
+        if (arrowRoot || !overlayRoot)
+            return;
+
+        arrowRoot = new GameObject("TutorialArrow", typeof(RectTransform)).GetComponent<RectTransform>();
+        arrowRoot.SetParent(overlayRoot, false);
+        arrowRoot.anchorMin = new Vector2(0.5f, 0.5f);
+        arrowRoot.anchorMax = new Vector2(0.5f, 0.5f);
+        arrowRoot.pivot = new Vector2(0f, 0.5f);
+        arrowRoot.sizeDelta = new Vector2(200f, 40f);
+        arrowRoot.gameObject.SetActive(false);
+
+        arrowShaft = new GameObject("ArrowShaft", typeof(RectTransform)).GetComponent<RectTransform>();
+        arrowShaft.SetParent(arrowRoot, false);
+        arrowShaft.anchorMin = new Vector2(0f, 0.5f);
+        arrowShaft.anchorMax = new Vector2(0f, 0.5f);
+        arrowShaft.pivot = new Vector2(0f, 0.5f);
+        arrowShaft.anchoredPosition = Vector2.zero;
+        arrowShaft.sizeDelta = new Vector2(120f, ArrowThickness);
+        var shaftImage = arrowShaft.gameObject.AddComponent<Image>();
+        shaftImage.sprite = GetSolidSprite();
+        shaftImage.color = Color.white;
+        shaftImage.raycastTarget = false;
+
+        arrowHead = new GameObject("ArrowHead", typeof(RectTransform)).GetComponent<RectTransform>();
+        arrowHead.SetParent(arrowRoot, false);
+        arrowHead.anchorMin = new Vector2(0f, 0.5f);
+        arrowHead.anchorMax = new Vector2(0f, 0.5f);
+        arrowHead.pivot = new Vector2(0.5f, 0.5f);
+        arrowHead.anchoredPosition = new Vector2(ArrowHeadSize * 0.5f, 0f);
+        arrowHead.sizeDelta = new Vector2(ArrowHeadSize, ArrowHeadSize);
+        arrowHead.localRotation = Quaternion.Euler(0f, 0f, 45f);
+        var headImage = arrowHead.gameObject.AddComponent<Image>();
+        headImage.sprite = GetSolidSprite();
+        headImage.color = Color.white;
+        headImage.raycastTarget = false;
+    }
+
     void SetMessage(string text)
     {
         if (!messagePanel || !messageText)
@@ -352,6 +406,12 @@ public class Level2TutorialController : MonoBehaviour
 
         messagePanel.gameObject.SetActive(true);
         messageText.text = text;
+    }
+
+    void HideImpostorArrow()
+    {
+        if (arrowRoot)
+            arrowRoot.gameObject.SetActive(false);
     }
 
     void FocusOnTag(string tag)
@@ -505,6 +565,23 @@ public class Level2TutorialController : MonoBehaviour
     {
         if (!tutorialActive)
             return;
+        if (currentStep == Step.ShowImpostorColor)
+        {
+            if (!colorSwapTriggered && colorSwapTimer >= 0f)
+            {
+                colorSwapTimer -= Time.deltaTime;
+                if (colorSwapTimer <= 0f)
+                {
+                    colorSwapTimer = 0f;
+                    TriggerColorSwap();
+                }
+                else
+                {
+                    UpdateImpostorPreviewMessage();
+                }
+            }
+            UpdateImpostorArrow();
+        }
     }
 
     void ShowOverlay(bool show)
@@ -525,6 +602,232 @@ public class Level2TutorialController : MonoBehaviour
         skipButton.interactable = visible;
     }
 
+    void SetupTutorialImpostor()
+    {
+        CleanupTutorialImpostor();
+
+        Vector3 spawnPos = DetermineImpostorSpawnPoint();
+        if (spawner && spawner.npcPrefab)
+        {
+            tutorialImpostor = Instantiate(spawner.npcPrefab, spawnPos, Quaternion.identity, spawner.npcsParent);
+            tutorialImpostor.name = "Tutorial2_Impostor";
+            AlignToGround(tutorialImpostor, spawnPos.y);
+            if (tutorialImpostor.TryGetComponent<PathFollower>(out var pf))
+                Destroy(pf);
+            if (tutorialImpostor.TryGetComponent<NPCWander>(out var wander))
+                Destroy(wander);
+        }
+        else
+        {
+            tutorialImpostor = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            tutorialImpostor.transform.position = spawnPos;
+            tutorialImpostor.transform.localScale = new Vector3(0.4f, 0.65f, 0.4f);
+            if (tutorialImpostor.TryGetComponent<Collider>(out var col))
+                Destroy(col);
+        }
+
+        tutorialImpostor.hideFlags = HideFlags.HideAndDontSave;
+
+        var drifter = tutorialImpostor.AddComponent<TutorialDrifter>();
+        drifter.Initialise(0.8f, 0.4f);
+
+        tutorialImpostorRenderers = tutorialImpostor.GetComponentsInChildren<Renderer>();
+        if (tutorialImpostorRenderers != null && tutorialImpostorRenderers.Length > 0)
+        {
+            tutorialImpostorMaterials = new Material[tutorialImpostorRenderers.Length];
+            for (int i = 0; i < tutorialImpostorRenderers.Length; i++)
+            {
+                var renderer = tutorialImpostorRenderers[i];
+                if (!renderer) continue;
+                tutorialImpostorMaterials[i] = new Material(renderer.sharedMaterial)
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                renderer.sharedMaterial = tutorialImpostorMaterials[i];
+            }
+        }
+    }
+
+    Vector3 DetermineImpostorSpawnPoint()
+    {
+        Vector3 focus = DetermineFocusPoint();
+        return SnapToGround(focus);
+    }
+
+    Vector3 DetermineFocusPoint()
+    {
+        if (!mainCam)
+            mainCam = Camera.main;
+
+        if (mainCam)
+        {
+            Ray ray = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            if (Physics.Raycast(ray, out var hit, 150f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                return hit.point;
+
+            var ground = new Plane(Vector3.up, playerStateCaptured ? savedPlayerPosition : (playerMover ? playerMover.transform.position : Vector3.zero));
+            if (ground.Raycast(ray, out float enter))
+                return ray.GetPoint(enter);
+        }
+
+        if (playerStateCaptured)
+            return savedPlayerPosition;
+        if (playerMover)
+            return playerMover.transform.position;
+        return Vector3.zero;
+    }
+
+    Vector3 SnapToGround(Vector3 position)
+    {
+        Vector3 origin = position + Vector3.up * 2f;
+        if (Physics.Raycast(origin, Vector3.down, out var hit, 6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            position.y = hit.point.y;
+        else
+            position.y = playerStateCaptured ? savedPlayerPosition.y : position.y;
+        return position;
+    }
+
+    void AlignToGround(GameObject obj, float groundY)
+    {
+        if (!obj)
+            return;
+        var renderer = obj.GetComponentInChildren<Renderer>();
+        if (renderer)
+        {
+            float bottom = renderer.bounds.min.y;
+            obj.transform.position += new Vector3(0f, groundY - bottom, 0f);
+        }
+        else
+        {
+            obj.transform.position = new Vector3(obj.transform.position.x, groundY, obj.transform.position.z);
+        }
+    }
+
+    void CleanupTutorialImpostor()
+    {
+        HideImpostorArrow();
+        if (tutorialImpostorMaterials != null)
+        {
+            foreach (var mat in tutorialImpostorMaterials)
+                if (mat) Destroy(mat);
+        }
+        tutorialImpostorMaterials = null;
+        tutorialImpostorRenderers = null;
+        if (tutorialImpostor)
+            Destroy(tutorialImpostor);
+        tutorialImpostor = null;
+        colorSwapTimer = -1f;
+        colorSwapTriggered = false;
+    }
+
+    void UpdateImpostorColor(Color color)
+    {
+        if (tutorialImpostorMaterials == null)
+            return;
+        foreach (var mat in tutorialImpostorMaterials)
+            if (mat) mat.color = color;
+    }
+
+    void UpdateImpostorPreviewMessage()
+    {
+        string heading =
+            "<b>Watch the current " +
+            "<color=#FF4D4D>I</color>" +
+            "<color=#2ECC71>m</color>" +
+            "<color=#3498DB>p</color>" +
+            "<color=#FF69B4>o</color>" +
+            "<color=#F1C40F>s</color>" +
+            "<color=#FF4D4D>t</color>" +
+            "<color=#2ECC71>e</color>" +
+            "<color=#3498DB>r</color> color</b>\n";
+        if (!colorSwapTriggered)
+        {
+            int seconds = Mathf.Max(0, Mathf.CeilToInt(colorSwapTimer));
+            string body =
+                "Currently the color is <color=#FF4D4D>Red</color>.\n" +
+                $"Color changes in {seconds} seconds.";
+            SetMessage(heading + body);
+        }
+        else
+        {
+            string body =
+                "The color just changed to another color.\n" +
+                "It swaps every 15 seconds, so keep an eye on it.";
+            SetMessage(heading + body);
+        }
+    }
+
+    void TriggerColorSwap()
+    {
+        colorSwapTriggered = true;
+        UpdateImpostorColor(TutorialOrange);
+        UpdateImpostorPreviewMessage();
+        if (continueButton)
+        {
+            continueButton.gameObject.SetActive(true);
+            continueButton.interactable = true;
+        }
+    }
+
+    void UpdateImpostorArrow()
+    {
+        if (!arrowRoot || !canvasRect || !tutorialImpostor)
+        {
+            HideImpostorArrow();
+            return;
+        }
+        if (!mainCam)
+            mainCam = Camera.main;
+
+        Vector3 tipWorld = GetImpostorTip();
+        Vector2 tipScreen = RectTransformUtility.WorldToScreenPoint(mainCam, tipWorld);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, tipScreen,
+                canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+                out var tipLocal))
+        {
+            HideImpostorArrow();
+            return;
+        }
+
+        Vector2 basePos = tipLocal + ArrowTailOffset;
+        arrowRoot.anchoredPosition = basePos;
+        Vector2 delta = tipLocal - basePos;
+        float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+        arrowRoot.localEulerAngles = new Vector3(0f, 0f, angle);
+
+        float shaftLength = Mathf.Max(10f, delta.magnitude - ArrowHeadSize * 0.5f);
+        if (arrowShaft)
+        {
+            arrowShaft.sizeDelta = new Vector2(shaftLength, ArrowThickness);
+            arrowShaft.anchoredPosition = Vector2.zero;
+        }
+        if (arrowHead)
+            arrowHead.anchoredPosition = new Vector2(shaftLength, 0f);
+        arrowRoot.gameObject.SetActive(true);
+    }
+
+    Vector3 GetImpostorTip()
+    {
+        var primary = GetPrimaryImpostorRenderer();
+        if (primary)
+            return primary.bounds.center + Vector3.up * primary.bounds.extents.y;
+        if (tutorialImpostor)
+            return tutorialImpostor.transform.position + Vector3.up * ArrowTargetHeight;
+        return Vector3.zero;
+    }
+
+    Renderer GetPrimaryImpostorRenderer()
+    {
+        if (tutorialImpostorRenderers == null)
+            return null;
+        foreach (var renderer in tutorialImpostorRenderers)
+        {
+            if (renderer)
+                return renderer;
+        }
+        return null;
+    }
+
     void OnDisable()
     {
         if (tutorialActive)
@@ -532,6 +835,7 @@ public class Level2TutorialController : MonoBehaviour
         else
             CleanupTutorialHazards();
         RestoreVisionRadius();
+        CleanupTutorialImpostor();
     }
 
     void OnDestroy()
