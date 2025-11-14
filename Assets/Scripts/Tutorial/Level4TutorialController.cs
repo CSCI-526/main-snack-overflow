@@ -22,6 +22,8 @@ public class Level4TutorialController : MonoBehaviour
     SpawnManager spawner;
     ImpostorColorIndicator colorIndicator;
     bool indicatorWasActive;
+    bool playerSpawnedByTutorial;
+    bool playerWasActive;
 
     Vector3 savedPlayerPosition;
     Quaternion savedPlayerRotation;
@@ -119,7 +121,9 @@ public class Level4TutorialController : MonoBehaviour
         spawner = FindObjectOfType<SpawnManager>();
         colorIndicator = ImpostorColorIndicator.Instance;
 
+        EnsurePlayerPresent();
         CapturePlayerState();
+        HidePlayerForTutorial();
         EnsureUI();
         EnsureArrow();
         SetupTutorialImpostor();
@@ -153,7 +157,6 @@ public class Level4TutorialController : MonoBehaviour
         savedPlayerPosition = playerMover.transform.position;
         savedPlayerRotation = playerMover.transform.rotation;
         playerMoverWasEnabled = playerMover.enabled;
-        playerMover.enabled = false;
         playerStateCaptured = true;
     }
 
@@ -180,6 +183,7 @@ public class Level4TutorialController : MonoBehaviour
 
         ShowOverlay(false);
         RestorePlayerState();
+        RestorePlayerVisibility();
         CleanupTutorialImpostor();
         RestoreIndicator();
 
@@ -356,6 +360,7 @@ public class Level4TutorialController : MonoBehaviour
         {
             RestoreIndicator();
             CleanupTutorialImpostor();
+            RestorePlayerVisibility();
         }
     }
 
@@ -557,6 +562,43 @@ public class Level4TutorialController : MonoBehaviour
         if (spawner && spawner.playerSpawn)
             return spawner.playerSpawn.position;
         return Vector3.zero;
+    }
+
+    void HidePlayerForTutorial()
+    {
+        if (!playerMover)
+            return;
+        playerWasActive = playerMover.gameObject.activeSelf;
+        playerMover.gameObject.SetActive(false);
+    }
+
+    void RestorePlayerVisibility()
+    {
+        if (!playerMover)
+            return;
+        bool targetActive = playerSpawnedByTutorial || playerWasActive;
+        playerMover.gameObject.SetActive(targetActive);
+    }
+
+    void EnsurePlayerPresent()
+    {
+        if (playerMover)
+            return;
+
+        if (spawner == null)
+            spawner = FindObjectOfType<SpawnManager>();
+        if (spawner == null || !spawner.playerPrefab)
+            return;
+
+        Vector3 spawnPos = spawner.playerSpawn ? spawner.playerSpawn.position : Vector3.zero;
+        spawnPos.y = 0f;
+        Quaternion rotation = Quaternion.identity;
+        if (spawner.playerSpawn)
+            rotation = Quaternion.LookRotation(Vector3.forward, Vector3.up);
+        var player = Instantiate(spawner.playerPrefab, spawnPos, rotation, spawner.playerParent);
+        player.name = "Tutorial4_Player";
+        playerSpawnedByTutorial = true;
+        playerMover = player.GetComponent<PlayerMover>() ?? player.GetComponentInChildren<PlayerMover>();
     }
 
     void UpdateArrow()
