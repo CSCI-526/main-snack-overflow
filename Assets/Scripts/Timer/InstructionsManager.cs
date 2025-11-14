@@ -375,6 +375,9 @@ public class InstructionsManager : MonoBehaviour
         if (Level3TutorialController.TryBeginTutorial(this))
             return;
 
+        if (Level4TutorialController.TryBeginTutorial(this))
+            return;
+
         StartGameplayNow(true);
     }
 
