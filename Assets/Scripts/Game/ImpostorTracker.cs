@@ -101,7 +101,11 @@ public class ImpostorTracker : MonoBehaviour
         if (AnalyticsManager.I != null)
             AnalyticsManager.I.EndAttemptSuccess();
 
-        ProgressManager.SetLevel1Complete();
+        int completedLevel = GetCurrentLevelNumber();
+        if (completedLevel > 0)
+            ProgressManager.MarkLevelComplete(completedLevel);
+        else
+            ProgressManager.SetLevel1Complete(); // fallback for non-level scenes
 
     }
 
@@ -297,6 +301,23 @@ public class ImpostorTracker : MonoBehaviour
         SceneManager.LoadScene("LvL4");
     }
 
+    int GetCurrentLevelNumber()
+    {
+        var sceneName = SceneManager.GetActiveScene().name;
+        if (string.IsNullOrEmpty(sceneName)) return -1;
+
+        int number = 0;
+        bool hasDigit = false;
+
+        foreach (char c in sceneName)
+        {
+            if (!char.IsDigit(c)) continue;
+            hasDigit = true;
+            number = (number * 10) + (c - '0');
+        }
+
+        return hasDigit ? number : -1;
+    }
 
     void UpdateUI()
     {
