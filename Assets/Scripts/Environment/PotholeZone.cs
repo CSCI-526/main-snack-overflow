@@ -6,7 +6,7 @@ public class PotholeZone : MonoBehaviour
 {
     readonly HashSet<PlayerMover> playersInside = new();
     [Min(0f)]
-    public float stunDuration = 5f;
+    public float stunDuration = 3f;
 
     void Reset()
     {
