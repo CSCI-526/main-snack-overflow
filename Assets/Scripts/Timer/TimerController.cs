@@ -27,6 +27,13 @@ public class TimerController : MonoBehaviour
     bool isGameOver = false;
     bool isRunning = false;
     bool _reloading = false;
+    bool timeExpired = false;
+    int killedAtTimeout = -1;
+    int remainingAtTimeout = -1;
+    public bool IsGameOver => isGameOver;
+    public bool IsOutOfTime => currentTime <= 0.0001f;
+    public bool IsDisplayingZeroTime => currentTime < 1f; // matches when the HUD shows 00:00
+    public bool HasTimeExpired => timeExpired;
 
     [Header("Visual FX")]
     public float warningThreshold = 15f;                 // last N seconds
@@ -94,7 +101,13 @@ RectTransform _rt;
         currentTime = Mathf.Clamp(currentTime, 0f, startTime);
         UpdateTimerUI();
 
-        if (currentTime <= 0f) GameOver();
+        if (currentTime <= 0f)
+        {
+            timeExpired = true;
+            if (killedAtTimeout < 0)
+                CaptureStateAtTimeout();
+            GameOver();
+        }
     }
 
     public void StartTimer(float seconds = -1f)
@@ -104,6 +117,9 @@ RectTransform _rt;
         currentTime = startTime;
         isGameOver = false;
         isRunning = true;
+        timeExpired = false;
+        killedAtTimeout = -1;
+        remainingAtTimeout = -1;
 
         if (timerText) timerText.gameObject.SetActive(true);
         if (gameOverPanel) gameOverPanel.SetActive(false);
@@ -145,6 +161,9 @@ RectTransform _rt;
         isRunning = false;
         isGameOver = false;
         currentTime = Mathf.Max(0f, startTime);
+        timeExpired = false;
+        killedAtTimeout = -1;
+        remainingAtTimeout = -1;
         UpdateTimerUI();
         EnsureTimerOnTop();
     }
@@ -232,7 +251,27 @@ RectTransform _rt;
             if (total <= 0) total = killed + remaining; 
         }
 
+        if (HasTimeExpired)
+        {
+            if (remainingAtTimeout >= 0 && total > 0)
+            {
+                int preTimeoutKills = total - remainingAtTimeout;
+                killed = Mathf.Clamp(preTimeoutKills, 0, total);
+            }
+            else if (killedAtTimeout >= 0)
+            {
+                killed = Mathf.Min(killed, killedAtTimeout);
+            }
+        }
+
         scoreTMP.text = $"You eliminated {killed} out of {total} imposters!";
+    }
+
+    void CaptureStateAtTimeout()
+    {
+        var tracker = ImpostorTracker.Instance ?? FindObjectOfType<ImpostorTracker>(true);
+        killedAtTimeout = tracker != null ? tracker.Killed : 0;
+        remainingAtTimeout = tracker != null ? tracker.Remaining : -1;
     }
 
    

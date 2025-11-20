@@ -41,7 +41,7 @@ public class ImpostorTracker : MonoBehaviour
     {
         remaining = 0;
         TotalSpawned = 0;   
-        Killed = 0;         
+        Killed = 0;
         UpdateUI();
         if (winPanel) winPanel.SetActive(false);
         winSequenceStarted = false;
@@ -58,23 +58,43 @@ public class ImpostorTracker : MonoBehaviour
     
     public void OnImpostorKilled()
     {
-        if (remaining <= 0) return; 
+        var timer = FindObjectOfType<TimerController>(true);
+        bool timerLocked = timer != null &&
+                           (timer.IsGameOver || timer.HasTimeExpired || timer.IsOutOfTime || timer.IsDisplayingZeroTime);
+
+        if (timerLocked)
+            return;
+
+        if (remaining <= 0) return;
         remaining--;
-        Killed++;                    
+
+        Killed++;
+
         UpdateUI();
 
         if (remaining <= 0 && !winSequenceStarted)
         {
+            if (timer != null && (timer.IsGameOver || timer.HasTimeExpired || timer.IsOutOfTime))
+            {
+                Debug.Log("[ImpostorTracker] Timer already ended; suppressing win.");
+                return;
+            }
+
             winSequenceStarted = true;
             StartCoroutine(WinAfterBeam());
         }
     }
 
-   System.Collections.IEnumerator WinAfterBeam()
+    System.Collections.IEnumerator WinAfterBeam()
     {
         yield return new WaitForSecondsRealtime(winDelayAfterLastHit);
 
         var timer = FindObjectOfType<TimerController>(true);
+        if (timer != null && (timer.IsGameOver || timer.HasTimeExpired || timer.IsOutOfTime))
+        {
+            winSequenceStarted = false;
+            yield break;
+        }
         if (timer) timer.StopTimer();
 
         if (pauseOnWin) Time.timeScale = 0f;
