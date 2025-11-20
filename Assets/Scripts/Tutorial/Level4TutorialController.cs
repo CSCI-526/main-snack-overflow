@@ -197,7 +197,7 @@ public class Level4TutorialController : MonoBehaviour
         if (timer == null)
             timer = FindObjectOfType<TimerController>(true);
         if (timer != null)
-            timer.StartTimer(60f);
+            timer.StartTimer(90f);
     }
 
     void EnsureUI()

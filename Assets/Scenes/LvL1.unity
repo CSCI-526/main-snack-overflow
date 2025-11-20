@@ -82066,7 +82066,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e613616ff2ed79b489419c4623bd38c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startTime: 60
+  startTime: 90
   timerText: {fileID: 1580776672}
   gameOverPanel: {fileID: 1099998095}
   gameOverPanelName: GameOver Panel

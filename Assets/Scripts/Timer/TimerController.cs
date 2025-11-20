@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 public class TimerController : MonoBehaviour
 {
     [Header("Config")]
-    public float startTime = 60f;
+    public float startTime = 90f;
 
     [Header("Scene refs")]
     public TextMeshProUGUI timerText;

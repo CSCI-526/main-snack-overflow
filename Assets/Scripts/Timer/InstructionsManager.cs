@@ -64,7 +64,7 @@
 //    void HandleMemoryComplete()
 //    {
 //        if (timerController != null)
-//            timerController.StartTimer(60f);
+//            timerController.StartTimer(90f);
 //        FindObjectOfType<SpawnManager>()?.StartSpawning();
 
 
@@ -150,7 +150,7 @@
 // {
    
 //     if (timerController != null)
-//         timerController.StartTimer(60f);
+//         timerController.StartTimer(90f);
 
 //     FindObjectOfType<SpawnManager>()?.StartSpawning();
 
@@ -242,7 +242,7 @@
 //     void HandleMemoryComplete()
 //     {
 //         if (timerController != null)
-//             timerController.StartTimer(60f);
+//             timerController.StartTimer(90f);
 
 //         FindObjectOfType<SpawnManager>()?.StartSpawning();
 
@@ -406,7 +406,7 @@ public class InstructionsManager : MonoBehaviour
         EnableGameplayUI(true);
 
         if (startTimer && timerController != null)
-            timerController.StartTimer(60f);
+            timerController.StartTimer(90f);
     }
 
     public void TriggerSpawnIfNeeded()
@@ -523,7 +523,7 @@ public class InstructionsManager : MonoBehaviour
 //     void HandleMemoryComplete()
 //     {
 //         if (timerController != null)
-//             timerController.StartTimer(60f);
+//             timerController.StartTimer(90f);
 
 //         FindObjectOfType<SpawnManager>()?.StartSpawning();
 

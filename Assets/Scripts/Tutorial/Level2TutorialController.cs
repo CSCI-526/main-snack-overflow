@@ -263,7 +263,7 @@ public class Level2TutorialController : MonoBehaviour
         if (timer == null)
             timer = FindObjectOfType<TimerController>(true);
         if (timer != null)
-            timer.StartTimer(60f);
+            timer.StartTimer(90f);
 
         RestoreVisionRadius();
         CleanupTutorialHazards();

@@ -447,7 +447,7 @@ if (mainCamera) mainCamera.targetTexture = null;
 if (pauseGameDuringMemory) Time.timeScale = 1f;
 
 var timer = FindObjectOfType<TimerController>(true);
-if (timer != null) timer.StartTimer(60f);
+if (timer != null) timer.StartTimer(90f);
 
 OnMemoryPhaseComplete?.Invoke();
 
