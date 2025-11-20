@@ -654,7 +654,7 @@ TutorialVisionHint visionHint;
 
         string message =
             "<b>Time to Hunt</b>\n" +
-            "You have <b>1 minute</b> to eliminate all 10 impostors.\n" +
+            "You have <b>1 minute 30 seconds</b> to eliminate all 10 impostors.\n" +
             "Press Continue to begin the mission.";
 
         SetMessage(

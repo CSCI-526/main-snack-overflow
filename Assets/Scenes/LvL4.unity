@@ -21136,6 +21136,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1672995373}
   - component: {fileID: 1672995374}
+  - component: {fileID: 1672995375}
   m_Layer: 0
   m_Name: WorldBounds
   m_TagString: Untagged
@@ -21179,6 +21180,28 @@ MonoBehaviour:
   height: 8
   thickness: 0.5
   padding: 0
+--- !u!114 &1672995375
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1672995372}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c38e6439d5c4400834615f3076dce9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sourceRoot: {fileID: 433086662}
+  fenceMaterial: {fileID: 2100000, guid: 4f2d8724980740b69088467a3788e590, type: 2}
+  fenceHeight: 3
+  postWidth: 0.4
+  railThickness: 0.18
+  postSpacing: 4
+  horizontalInset: 0.25
+  baseHeightOffset: 0
+  railCount: 3
+  railHeightRange: {x: 0.4, y: 2.2}
 --- !u!1 &1684447628
 GameObject:
   m_ObjectHideFlags: 0
