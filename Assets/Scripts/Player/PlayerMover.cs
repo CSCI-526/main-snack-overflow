@@ -66,16 +66,55 @@ public bool logSpeed = false;
         Vector3 right = cam.transform.right; right.y = 0f; right.Normalize();
 
         // ---- Direct key input (WASD + Arrow keys), no analog drift ----
+        //float h = 0f, v = 0f;
+        //if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))  h -= 1f;
+        //if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) h += 1f;
+        //if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))    v += 1f;
+        //if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))  v -= 1f;
+
+        //Vector3 input = new Vector3(h, 0f, v);
+        //if (input.sqrMagnitude > 0f) input.Normalize();
+
+        //desiredVel = input * moveSpeed * hitSpeedMultiplier * activeMudMultiplier;
+        //if (IsStunned())
+        //    desiredVel = Vector3.zero;
+
         float h = 0f, v = 0f;
-        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))  h -= 1f;
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) h -= 1f;
         if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) h += 1f;
-        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))    v += 1f;
-        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))  v -= 1f;
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) v += 1f;
+        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) v -= 1f;
 
-        Vector3 input = new Vector3(h, 0f, v);
-        if (input.sqrMagnitude > 0f) input.Normalize();
+        // --- Enforce cardinal input (no diagonals) ---
+        float hCard = 0f;
+        float vCard = 0f;
 
-        desiredVel = input * moveSpeed * hitSpeedMultiplier * activeMudMultiplier;
+        // Decide whether horizontal or vertical wins
+        if (Mathf.Abs(h) > Mathf.Abs(v))
+        {
+            // Horizontal movement (left/right)
+            hCard = Mathf.Sign(h);   // -1 or +1
+            vCard = 0f;
+        }
+        else if (Mathf.Abs(v) > 0f)
+        {
+            // Vertical movement (forward/back)
+            vCard = Mathf.Sign(v);   // -1 or +1
+            hCard = 0f;
+        }
+
+        // --- Build camera-relative movement direction ---
+        Vector3 moveDir = Vector3.zero;
+
+        if (hCard != 0f || vCard != 0f)
+        {
+            // Use camera-aligned right/forward from above
+            moveDir = (right * hCard + fwd * vCard).normalized;
+        }
+
+        // --- Apply speed and modifiers ---
+        desiredVel = moveDir * moveSpeed * hitSpeedMultiplier * activeMudMultiplier;
+
         if (IsStunned())
             desiredVel = Vector3.zero;
 
