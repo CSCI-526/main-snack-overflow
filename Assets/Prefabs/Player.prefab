@@ -179,7 +179,7 @@ MonoBehaviour:
   passiveDecayPerSecond: 0.5
   linkIntensityToRange: 1
   minIntensity: 50
-  maxIntensity: 290
+  maxIntensity: 250
   perCollectibleIntensityIncrease: 35
   passiveIntensityDecayPerSecond: 15
   pickupFlashMultiplier: 1.08
