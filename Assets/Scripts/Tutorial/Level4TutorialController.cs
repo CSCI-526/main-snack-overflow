@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -24,6 +25,7 @@ public class Level4TutorialController : MonoBehaviour
     bool indicatorWasActive;
     bool playerSpawnedByTutorial;
     bool playerWasActive;
+    Func<NPCIdentity, bool> previousHitFilter;
 
     Vector3 savedPlayerPosition;
     Quaternion savedPlayerRotation;
@@ -128,6 +130,7 @@ public class Level4TutorialController : MonoBehaviour
         EnsureArrow();
         SetupTutorialImpostor();
         SuppressIndicator();
+        ApplyHitFilter();
 
         Time.timeScale = 1f;
         instructions?.SetVisionMaskActive(true);
@@ -198,6 +201,8 @@ public class Level4TutorialController : MonoBehaviour
             timer = FindObjectOfType<TimerController>(true);
         if (timer != null)
             timer.StartTimer(90f);
+
+        ReleaseHitFilter();
     }
 
     void EnsureUI()
@@ -361,6 +366,7 @@ public class Level4TutorialController : MonoBehaviour
             RestoreIndicator();
             CleanupTutorialImpostor();
             RestorePlayerVisibility();
+            ReleaseHitFilter();
         }
     }
 
@@ -434,6 +440,29 @@ public class Level4TutorialController : MonoBehaviour
         if (!colorIndicator)
             return;
         colorIndicator.gameObject.SetActive(indicatorWasActive);
+    }
+
+    void ApplyHitFilter()
+    {
+        if (ClickToSmite.HitFilter == FilterHits)
+            return;
+        previousHitFilter = ClickToSmite.HitFilter;
+        ClickToSmite.HitFilter = FilterHits;
+    }
+
+    void ReleaseHitFilter()
+    {
+        if (ClickToSmite.HitFilter == FilterHits)
+            ClickToSmite.HitFilter = previousHitFilter;
+        previousHitFilter = null;
+    }
+
+    bool FilterHits(NPCIdentity npc)
+    {
+        if (previousHitFilter != null && !previousHitFilter(npc))
+            return false;
+
+        return !tutorialActive;
     }
 
     bool SetupTutorialImpostor()
