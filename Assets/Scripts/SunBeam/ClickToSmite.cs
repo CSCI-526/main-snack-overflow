@@ -86,6 +86,7 @@ public class ClickToSmite : MonoBehaviour
 
     // Reference to VisionMaskController
     public VisionMaskController visionMaskController;
+    public const float VisionRadiusStep = 0.085f;
 
     /// <summary>
     /// Optional hook that can veto hits (e.g. tutorial gating). Return true to allow the shot.
@@ -230,7 +231,10 @@ public class ClickToSmite : MonoBehaviour
             return;
         }
 
-        float delta = increase ? 0.085f : -0.085f;
+        float delta = increase ? VisionRadiusStep : -VisionRadiusStep;
+        var tutorial = Level1TutorialController.Instance;
+        if (tutorial != null && tutorial.HandleVisionAdjustmentRequest(increase, visionMaskController, delta))
+            return;
         float target = visionMaskController.currentRadius + delta;
         visionMaskController.UpdateRadius(target);
 

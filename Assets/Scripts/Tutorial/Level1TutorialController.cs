@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -20,6 +22,7 @@ public class Level1TutorialController : MonoBehaviour
         AwaitMovement,
         ClickImpostor,
         VisionReview,
+        ClickCivilian,
         ShowCivilian,
         TimerBriefing,
         Finished
@@ -44,8 +47,19 @@ readonly Vector2 arrowTailOffset = new(-140f, 55f);
 const float arrowTargetHeight = 1.6f;
 
 const string AccentHex = "#F8B938";
+const string CivilianPenaltyMessage = SunbeamManager.DefaultCivilianMessage;
 const string CivilianColorKeyword = "orange";
-static readonly Color TutorialCivilianColor = new Color32(244, 128, 40, 255);
+static readonly Color TutorialCivilianColor = new Color32(230, 110, 25, 255);
+static readonly Color32[] AdditionalCivilianColors =
+{
+    new Color32(96, 4, 48, 255),
+    new Color32(150, 0, 0, 255)
+};
+static readonly Vector3[] AdditionalCivilianOffsets =
+{
+    new Vector3(6.5f, 0f, 1.8f),
+    new Vector3(-1.6f, 0f, -2.8f)
+};
 
     InstructionsManager instructions;
     TimerController timer;
@@ -67,6 +81,9 @@ const float arrowHeadWidth = 26f;
 const float arrowShaftHeight = 12f;
 Button continueButton;
 Button skipTutorialButton;
+KillTextController cachedKillText;
+bool pendingVisionReduction;
+float pendingVisionTargetRadius;
 
     static Sprite solidSprite;
     static TMP_FontAsset cachedFont;
@@ -87,6 +104,20 @@ string civilianColorDisplayName = "civilian";
 string civilianColorHex = "#F48028";
 string impostorColorHex = "#FF4F4F";
 TutorialVisionHint visionHint;
+    int tutorialCivilianColorId = -1;
+    Vector3 tutorialCivilianSpawnPos;
+    string[] civilianColorHexSequence;
+    class CivilianShowcase
+    {
+        public GameObject npc;
+        public NPCIdentity identity;
+        public TutorialDrifter drifter;
+        public RectTransform arrowRoot;
+        public RectTransform arrowShaft;
+        public RectTransform arrowHead;
+    }
+
+    readonly List<CivilianShowcase> additionalCivilians = new();
 
     NPCIdentity targetImpostor;
     NPCIdentity targetCivilian;
@@ -300,6 +331,10 @@ TutorialVisionHint visionHint;
         tutorialCivilian = InstantiateTutorialNpc(false, civilianPos, civilianColorId, out tutorialCivilianId, out civilianDrifter);
         civilianColorHex = ColorUtility.ToHtmlStringRGB(TutorialCivilianColor);
         civilianColorDisplayName = "orange";
+        tutorialCivilianColorId = civilianColorId;
+        tutorialCivilianSpawnPos = civilianPos;
+
+        EnsureAdditionalCivilianShowcase(forceRebuild: true);
 
         targetImpostor = tutorialImpostorId;
         targetCivilian = tutorialCivilianId;
@@ -338,7 +373,7 @@ TutorialVisionHint visionHint;
         tutorialPlayer = Instantiate(spawner.playerPrefab, spawnPos, Quaternion.identity, spawner.playerParent);
     }
 
-    GameObject InstantiateTutorialNpc(bool isImpostor, Vector3 position, int colorId, out NPCIdentity identity, out TutorialDrifter drifter)
+    GameObject InstantiateTutorialNpc(bool isImpostor, Vector3 position, int colorId, out NPCIdentity identity, out TutorialDrifter drifter, Color? civilianOverrideColor = null)
     {
         identity = null;
         drifter = null;
@@ -363,11 +398,12 @@ TutorialVisionHint visionHint;
 
         if (!isImpostor)
         {
+            Color tint = civilianOverrideColor ?? TutorialCivilianColor;
             foreach (var r in renderers)
             {
                 if (!r) continue;
                 var mat = new Material(r.material);
-                mat.color = TutorialCivilianColor;
+                mat.color = tint;
                 r.material = mat;
             }
         }
@@ -499,13 +535,15 @@ TutorialVisionHint visionHint;
     void AdvanceToCivilianStep()
     {
         currentStep = Step.ShowCivilian;
-        targetCivilian = tutorialCivilianId != null ? tutorialCivilianId : FindCivilian();
+        targetCivilian = null;
+        arrowRoot?.gameObject.SetActive(false);
+        HideAdditionalCivilianArrows();
 
+        ApplyPendingVisionPenalty();
         ShowCivilianMessage();
         continueButton.gameObject.SetActive(true);
         continueButton.interactable = true;
         RefreshOverlayInteractivity();
-        MaintainCivilianArrow();
         ShowCivilianVisionPrompt();
     }
 
@@ -514,33 +552,36 @@ TutorialVisionHint visionHint;
         if (targetCivilian == null)
         {
             targetCivilian = FindCivilian();
-            if (targetCivilian == null)
-            {
+            if (targetCivilian == null && arrowRoot)
                 arrowRoot.gameObject.SetActive(false);
-                return;
-            }
         }
 
-        arrowRoot.gameObject.SetActive(true);
-        UpdateArrowToTarget(targetCivilian.transform, 0.95f);
+        if (targetCivilian != null)
+        {
+            arrowRoot.gameObject.SetActive(true);
+            UpdateArrowToTarget(targetCivilian.transform, 0.95f);
+        }
+
+        foreach (var showcase in additionalCivilians)
+            MaintainAdditionalCivilianArrow(showcase);
     }
 
-    void UpdateArrowToTarget(Transform target, float yOffsetMultiplier = 1f)
+    void UpdateArrowToTarget(Transform target, float yOffsetMultiplier = 1f,
+        RectTransform customRoot = null, RectTransform customShaft = null, RectTransform customHead = null)
     {
-        if (!target || !canvasRect)
+        var root = customRoot ? customRoot : arrowRoot;
+        var shaft = customShaft ? customShaft : arrowShaftRect;
+        var head = customHead ? customHead : arrowHeadRect;
+
+        if (!target || !canvasRect || !root)
             return;
 
         if (!mainCam)
             mainCam = Camera.main;
 
-        Vector3 boundsCenter = target.position;
         var renderer = target.GetComponentInChildren<Renderer>();
-        if (renderer)
-            boundsCenter = renderer.bounds.center;
-
-        float halfHeight = 0.8f;
-        if (renderer)
-            halfHeight = renderer.bounds.extents.y;
+        Vector3 boundsCenter = renderer ? renderer.bounds.center : target.position;
+        float halfHeight = renderer ? renderer.bounds.extents.y : 0.8f;
 
         Vector3 worldTip = boundsCenter + Vector3.up * halfHeight * yOffsetMultiplier;
         Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(mainCam, worldTip);
@@ -552,22 +593,22 @@ TutorialVisionHint visionHint;
                 out Vector2 localPoint))
         {
             Vector2 basePos = localPoint + arrowTailOffset;
-            arrowRoot.anchoredPosition = basePos;
+            root.anchoredPosition = basePos;
 
             Vector2 delta = localPoint - basePos;
             float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-            arrowRoot.localEulerAngles = new Vector3(0f, 0f, angle);
+            root.localEulerAngles = new Vector3(0f, 0f, angle);
 
             float tipDistance = delta.magnitude;
             float shaftLength = Mathf.Max(10f, tipDistance - arrowHeadWidth * 0.5f);
-            if (arrowShaftRect != null)
+            if (shaft != null)
             {
-                arrowShaftRect.sizeDelta = new Vector2(shaftLength, arrowShaftHeight);
-                arrowShaftRect.anchoredPosition = Vector2.zero;
+                shaft.sizeDelta = new Vector2(shaftLength, arrowShaftHeight);
+                shaft.anchoredPosition = Vector2.zero;
             }
 
-            if (arrowHeadRect != null)
-                arrowHeadRect.anchoredPosition = new Vector2(shaftLength, 0f);
+            if (head != null)
+                head.anchoredPosition = new Vector2(shaftLength, 0f);
         }
     }
 
@@ -611,6 +652,14 @@ TutorialVisionHint visionHint;
             ShowVisionGrowthPrompt();
             return;
         }
+
+        if (currentStep == Step.ClickCivilian && !correct)
+        {
+            ShowCivilianPenaltyNotification();
+            RemoveCivilianFromScene(id);
+            AdvanceToCivilianStep();
+            return;
+        }
     }
 
     void DisableDrifter(NPCIdentity id)
@@ -639,17 +688,60 @@ TutorialVisionHint visionHint;
                 increase: false,
                 maskRect: maskRect,
                 radius: radius,
-                customMessage: "Killing civilians shrinks your vision and slows your speed across the landscape.",
+                customMessage: "Killing civilians shrinks your vision and slows your speed.",
                 requireContinue: false,
                 continueCallback: null,
                 persistent: true);
         }
     }
 
+    void ApplyPendingVisionPenalty()
+    {
+        if (!pendingVisionReduction)
+            return;
+        var maskController = VisionMaskController.Instance;
+        if (!maskController)
+            return;
+        maskController.UpdateRadius(pendingVisionTargetRadius);
+        pendingVisionReduction = false;
+    }
+
+    void ShowCivilianPenaltyNotification()
+    {
+        if (!cachedKillText)
+        {
+            cachedKillText = KillTextController.Instance;
+            if (!cachedKillText)
+                cachedKillText = FindObjectOfType<KillTextController>(true);
+        }
+
+        var killText = cachedKillText;
+        if (!killText || killText.label == null)
+            return;
+
+        var labelRect = killText.label.rectTransform;
+        if (labelRect)
+            labelRect.SetAsLastSibling();
+        killText.transform.SetAsLastSibling();
+    }
+
+    public bool HandleVisionAdjustmentRequest(bool increase, VisionMaskController controller, float delta)
+    {
+        if (!tutorialActive || currentStep != Step.ClickCivilian)
+            return false;
+        if (increase || controller == null)
+            return false;
+
+        pendingVisionReduction = true;
+        pendingVisionTargetRadius = controller.currentRadius + delta;
+        return true;
+    }
+
     void ShowTimerBriefing()
     {
         currentStep = Step.TimerBriefing;
         visionHint?.Hide();
+        HideAdditionalCivilianArrows();
         arrowRoot.gameObject.SetActive(PointArrowToTimer());
 
         string message =
@@ -732,7 +824,7 @@ TutorialVisionHint visionHint;
                 increase: true,
                 maskRect: maskRect,
                 radius: radius,
-                customMessage: "Killing impostors expands your vision and increases your speed across the landscape.",
+                customMessage: "Killing impostors expands your vision and increases your speed.",
                 requireContinue: true,
                 continueCallback: OnVisionGrowthContinue);
         }
@@ -747,7 +839,31 @@ TutorialVisionHint visionHint;
         SetMessageVisible(true);
         visionHint?.Hide();
         RefreshOverlayInteractivity();
-        AdvanceToCivilianStep();
+        BeginCivilianClickPractice();
+    }
+
+    void BeginCivilianClickPractice()
+    {
+        EnsurePrimaryCivilianPresent();
+        EnsureAdditionalCivilianShowcase(forceRebuild: true);
+        currentStep = Step.ClickCivilian;
+        continueButton.gameObject.SetActive(false);
+        continueButton.interactable = false;
+        ConfigureSkipButton(true);
+
+        targetCivilian = tutorialCivilianId != null ? tutorialCivilianId : FindCivilian();
+        MaintainCivilianArrow();
+
+        const string whiteCivilian = "<color=#FFFFFF>Civilian</color>";
+        string message =
+            $"<b>Click on any {whiteCivilian}</b>\n" +
+            "Take the shot now.";
+
+        SetMessage(
+            message,
+            ActionAnchor,
+            ActionOffset,
+            MessageSizeMedium);
     }
 
     void Update()
@@ -769,7 +885,7 @@ TutorialVisionHint visionHint;
             case Step.VisionReview:
                 // waiting for player acknowledgement
                 break;
-            case Step.ShowCivilian:
+            case Step.ClickCivilian:
                 MaintainCivilianArrow();
                 break;
             case Step.TimerBriefing:
@@ -859,15 +975,21 @@ TutorialVisionHint visionHint;
 
     void ClearTutorialActors()
     {
+        pendingVisionReduction = false;
+        pendingVisionTargetRadius = 0f;
+
         if (tutorialImpostor)
             Destroy(tutorialImpostor);
         if (tutorialCivilian)
             Destroy(tutorialCivilian);
+        CleanupAdditionalCivilianShowcase();
 
         tutorialImpostor = null;
         tutorialCivilian = null;
         tutorialImpostorId = null;
         tutorialCivilianId = null;
+        tutorialCivilianColorId = -1;
+        tutorialCivilianSpawnPos = Vector3.zero;
         tutorialPlayer = null;
         targetImpostor = null;
         targetCivilian = null;
@@ -877,6 +999,180 @@ TutorialVisionHint visionHint;
 
         RefreshOverlayInteractivity();
         visionHint?.Hide();
+    }
+
+    void EnsureAdditionalCivilianShowcase(bool forceRebuild = false)
+    {
+        if (forceRebuild)
+            CleanupAdditionalCivilianShowcase();
+
+        if (additionalCivilians.Count > 0)
+            return;
+        if (!tutorialCivilian)
+            return;
+
+        int baseColorId = tutorialCivilianId ? tutorialCivilianId.colorId :
+            GetCivilianColorId(tutorialImpostorId ? tutorialImpostorId.colorId : -1);
+
+        Vector3 anchor = tutorialPlayer ? tutorialPlayer.transform.position : tutorialCivilian.transform.position;
+        for (int i = 0; i < AdditionalCivilianOffsets.Length && i < AdditionalCivilianColors.Length; i++)
+        {
+            var showcase = new CivilianShowcase();
+            Vector3 spawnPos = SnapToGround(anchor + AdditionalCivilianOffsets[i]);
+            showcase.npc = InstantiateTutorialNpc(false, spawnPos, baseColorId,
+                out showcase.identity, out showcase.drifter, AdditionalCivilianColors[i]);
+            showcase.arrowRoot = CreateArrowInstance($"ExtraCivilianArrow_{i}", out showcase.arrowShaft, out showcase.arrowHead);
+            if (showcase.arrowRoot)
+                showcase.arrowRoot.gameObject.SetActive(false);
+            additionalCivilians.Add(showcase);
+        }
+    }
+
+    void MaintainAdditionalCivilianArrow(CivilianShowcase showcase)
+    {
+        if (showcase == null || showcase.arrowRoot == null)
+            return;
+
+        Transform target = null;
+        if (showcase.identity)
+            target = showcase.identity.transform;
+        else if (showcase.npc)
+            target = showcase.npc.transform;
+
+        if (!target)
+        {
+            showcase.arrowRoot.gameObject.SetActive(false);
+            return;
+        }
+
+        showcase.arrowRoot.gameObject.SetActive(true);
+        UpdateArrowToTarget(target, 0.95f, showcase.arrowRoot, showcase.arrowShaft, showcase.arrowHead);
+    }
+
+    void CleanupAdditionalCivilianShowcase()
+    {
+        foreach (var showcase in additionalCivilians)
+        {
+            if (showcase == null) continue;
+            if (showcase.drifter)
+                Destroy(showcase.drifter);
+            if (showcase.npc)
+                Destroy(showcase.npc);
+            if (showcase.arrowRoot)
+                Destroy(showcase.arrowRoot.gameObject);
+        }
+        additionalCivilians.Clear();
+    }
+
+    void HideAdditionalCivilianArrows()
+    {
+        foreach (var showcase in additionalCivilians)
+        {
+            if (showcase?.arrowRoot)
+                showcase.arrowRoot.gameObject.SetActive(false);
+        }
+    }
+
+    void RemoveCivilianFromScene(NPCIdentity id)
+    {
+        if (!id)
+            return;
+        if (tutorialCivilianId == id)
+        {
+            if (civilianDrifter)
+            {
+                civilianDrifter.enabled = false;
+                civilianDrifter = null;
+            }
+            tutorialCivilian = null;
+            tutorialCivilianId = null;
+            return;
+        }
+
+        for (int i = additionalCivilians.Count - 1; i >= 0; i--)
+        {
+            var showcase = additionalCivilians[i];
+            if (showcase == null || showcase.identity != id)
+                continue;
+            if (showcase.drifter)
+            {
+                showcase.drifter.enabled = false;
+                showcase.drifter = null;
+            }
+            if (showcase.arrowRoot)
+                Destroy(showcase.arrowRoot.gameObject);
+            additionalCivilians.RemoveAt(i);
+            break;
+        }
+    }
+
+    void EnsurePrimaryCivilianPresent()
+    {
+        if (tutorialCivilian)
+            return;
+        if (tutorialCivilianColorId < 0)
+            return;
+        tutorialCivilian = InstantiateTutorialNpc(false, tutorialCivilianSpawnPos, tutorialCivilianColorId, out tutorialCivilianId, out civilianDrifter);
+    }
+
+    RectTransform CreateArrowInstance(string name, out RectTransform shaftRect, out RectTransform headRect)
+    {
+        shaftRect = null;
+        headRect = null;
+        if (!overlayRoot)
+            return null;
+
+        var arrowGO = new GameObject(name, typeof(RectTransform));
+        var root = arrowGO.GetComponent<RectTransform>();
+        root.SetParent(overlayRoot, false);
+        root.anchorMin = new Vector2(0.5f, 0.5f);
+        root.anchorMax = new Vector2(0.5f, 0.5f);
+        root.pivot = new Vector2(0f, 0.5f);
+        root.sizeDelta = new Vector2(200f, 40f);
+
+        var shaftGO = new GameObject("Shaft", typeof(RectTransform), typeof(Image));
+        shaftRect = shaftGO.GetComponent<RectTransform>();
+        shaftRect.SetParent(root, false);
+        shaftRect.anchorMin = new Vector2(0f, 0.5f);
+        shaftRect.anchorMax = new Vector2(0f, 0.5f);
+        shaftRect.pivot = new Vector2(0f, 0.5f);
+        shaftRect.anchoredPosition = Vector2.zero;
+        shaftRect.sizeDelta = new Vector2(120f, arrowShaftHeight);
+        var shaftImage = shaftGO.GetComponent<Image>();
+        shaftImage.sprite = GetSolidSprite();
+        shaftImage.color = Color.white;
+        shaftImage.raycastTarget = false;
+
+        var headGO = new GameObject("Head", typeof(RectTransform), typeof(Image));
+        headRect = headGO.GetComponent<RectTransform>();
+        headRect.SetParent(root, false);
+        headRect.anchorMin = new Vector2(0f, 0.5f);
+        headRect.anchorMax = new Vector2(0f, 0.5f);
+        headRect.pivot = new Vector2(0.5f, 0.5f);
+        headRect.anchoredPosition = new Vector2(arrowHeadWidth * 0.5f, 0f);
+        headRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
+        headRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
+        var headImage = headGO.GetComponent<Image>();
+        headImage.sprite = GetSolidSprite();
+        headImage.color = Color.white;
+        headImage.raycastTarget = false;
+
+        return root;
+    }
+
+    string[] GetCivilianColorHexes()
+    {
+        if (civilianColorHexSequence != null)
+            return civilianColorHexSequence;
+
+        var list = new List<string>(1 + AdditionalCivilianColors.Length)
+        {
+            ColorUtility.ToHtmlStringRGB(TutorialCivilianColor)
+        };
+        for (int i = 0; i < AdditionalCivilianColors.Length; i++)
+            list.Add(ColorUtility.ToHtmlStringRGB(AdditionalCivilianColors[i]));
+        civilianColorHexSequence = list.ToArray();
+        return civilianColorHexSequence;
     }
 
     bool FilterHits(NPCIdentity id)
@@ -889,6 +1185,7 @@ TutorialVisionHint visionHint;
             Step.AwaitMovement => false,
             Step.ClickImpostor => id != null && targetImpostor != null && id == targetImpostor,
             Step.VisionReview => false,
+            Step.ClickCivilian => id != null && !id.isImpostor,
             Step.ShowCivilian => false,
             _ => true,
         };
@@ -914,11 +1211,32 @@ TutorialVisionHint visionHint;
         if (!npc)
             return;
 
-        var renderer = npc.GetComponentInChildren<Renderer>();
-        if (renderer == null)
-            return;
+        var colliders = npc.GetComponentsInChildren<Collider>();
+        Bounds bounds = default;
+        bool hasBounds = false;
+        foreach (var col in colliders)
+        {
+            if (col == null) continue;
+            if (!hasBounds)
+            {
+                bounds = col.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(col.bounds);
+            }
+        }
 
-        float bottom = renderer.bounds.min.y;
+        if (!hasBounds)
+        {
+            var renderer = npc.GetComponentInChildren<Renderer>();
+            if (renderer == null)
+                return;
+            bounds = renderer.bounds;
+        }
+
+        float bottom = bounds.min.y;
         float offset = groundY - bottom;
         npc.transform.position += new Vector3(0f, offset, 0f);
     }
@@ -1056,44 +1374,9 @@ TutorialVisionHint visionHint;
         skipLabel.color = Color.white;
         skipLabel.raycastTarget = false;
 
-        var arrowGO = new GameObject("Arrow", typeof(RectTransform));
-        arrowRoot = arrowGO.GetComponent<RectTransform>();
-        arrowRoot.SetParent(overlayRoot, false);
-        arrowRoot.anchorMin = new Vector2(0.5f, 0.5f);
-        arrowRoot.anchorMax = new Vector2(0.5f, 0.5f);
-        arrowRoot.pivot = new Vector2(0f, 0.5f);
-        arrowRoot.sizeDelta = new Vector2(200f, 40f);
-
-        var shaftGO = new GameObject("Shaft", typeof(RectTransform));
-        arrowShaftRect = shaftGO.GetComponent<RectTransform>();
-        arrowShaftRect.SetParent(arrowRoot, false);
-        arrowShaftRect.anchorMin = new Vector2(0f, 0.5f);
-        arrowShaftRect.anchorMax = new Vector2(0f, 0.5f);
-        arrowShaftRect.pivot = new Vector2(0f, 0.5f);
-        arrowShaftRect.anchoredPosition = Vector2.zero;
-        arrowShaftRect.sizeDelta = new Vector2(120f, arrowShaftHeight);
-
-        var shaftImage = shaftGO.AddComponent<Image>();
-        shaftImage.sprite = GetSolidSprite();
-        shaftImage.color = Color.white;
-        shaftImage.raycastTarget = false;
-
-        var headGO = new GameObject("Head", typeof(RectTransform));
-        arrowHeadRect = headGO.GetComponent<RectTransform>();
-        arrowHeadRect.SetParent(arrowRoot, false);
-        arrowHeadRect.anchorMin = new Vector2(0f, 0.5f);
-        arrowHeadRect.anchorMax = new Vector2(0f, 0.5f);
-        arrowHeadRect.pivot = new Vector2(0.5f, 0.5f);
-        arrowHeadRect.anchoredPosition = new Vector2(arrowHeadWidth * 0.5f, 0f);
-        arrowHeadRect.sizeDelta = new Vector2(arrowHeadWidth, arrowHeadWidth);
-        arrowHeadRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
-
-        var headImage = headGO.AddComponent<Image>();
-        headImage.sprite = GetSolidSprite();
-        headImage.color = Color.white;
-        headImage.raycastTarget = false;
-
-        arrowRoot.gameObject.SetActive(false);
+        arrowRoot = CreateArrowInstance("Arrow", out arrowShaftRect, out arrowHeadRect);
+        if (arrowRoot)
+            arrowRoot.gameObject.SetActive(false);
     }
 
     void ShowOverlay(bool show)
@@ -1149,8 +1432,9 @@ TutorialVisionHint visionHint;
 
     void ShowCivilianMessage()
     {
+        string coloredWord = "<color=#FFFFFF>Civilians</color>";
         string message =
-            $"<b>Leave <color=#{civilianColorHex}>Civilians</color> Alone</b>\n" +
+            $"<b>Leave {coloredWord} Alone</b>\n" +
             $"If a non-player character is <color=#{impostorColorHex}>not red</color>, do <b>not</b> click them.";
 
         SetMessage(
@@ -1158,6 +1442,19 @@ TutorialVisionHint visionHint;
             CivilianAnchor,
             CivilianOffset,
             MessageSizeLarge);
+    }
+
+    string GetColoredCivilianWord()
+    {
+        const string word = "Civilians";
+        var colors = GetCivilianColorHexes();
+        var builder = new StringBuilder(word.Length * 32);
+        for (int i = 0; i < word.Length; i++)
+        {
+            string hex = colors[i % colors.Length];
+            builder.Append("<color=#").Append(hex).Append('>').Append(word[i]).Append("</color>");
+        }
+        return builder.ToString();
     }
 
     void SetMessage(string text, Vector2 anchor, Vector2 offset, Vector2 size)

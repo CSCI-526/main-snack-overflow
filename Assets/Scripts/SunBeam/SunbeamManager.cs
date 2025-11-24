@@ -6,10 +6,10 @@ public class SunbeamManager : MonoBehaviour
     public static SunbeamManager Instance { get; private set; }
     public GameObject sunbeamPrefab; // assign the Sunbeam prefab in Inspector
     const string LevelThreeSceneName = "LvL3";
-    const string DefaultImpostorMessage = "Imposter Down!\nEyes Sharp, Feet Faster!";
-    const string DefaultCivilianMessage = "Civilian Down!\nSpeed Drop, Vision Blur!";
-    const string LevelThreeImpostorMessage = "Impostor down!\nFeet faster";
-    const string LevelThreeCivilianMessage = "Civilian down!\nSpeed drop";
+    public const string DefaultImpostorMessage = "Imposter Down!\nEyes Sharp, Feet Faster!";
+    public const string DefaultCivilianMessage = "Civilian Down!\nSpeed Drop, Vision Blur!";
+    public const string LevelThreeImpostorMessage = "Impostor down!\nFeet faster";
+    public const string LevelThreeCivilianMessage = "Civilian down!\nSpeed drop";
 
     void Awake()
     {
