@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -25,6 +26,7 @@ public class Level2TutorialController : MonoBehaviour
     VisionMaskController visionMask;
     PlayerMover playerMover;
     SpawnManager spawner;
+    Func<NPCIdentity, bool> previousHitFilter;
 
     Vector3 savedPlayerPosition;
     Quaternion savedPlayerRotation;
@@ -153,6 +155,8 @@ public class Level2TutorialController : MonoBehaviour
         Time.timeScale = 1f;
         instructions?.SetVisionMaskActive(true);
 
+        ApplyHitFilter();
+
         mainCam = Camera.main;
         tutorialActive = true;
         currentStep = Step.ShowImpostorColor;
@@ -268,6 +272,7 @@ public class Level2TutorialController : MonoBehaviour
         RestoreVisionRadius();
         CleanupTutorialHazards();
         CleanupTutorialImpostor();
+        ReleaseHitFilter();
     }
 
     void EnsureUI()
@@ -836,6 +841,7 @@ public class Level2TutorialController : MonoBehaviour
             CleanupTutorialHazards();
         RestoreVisionRadius();
         CleanupTutorialImpostor();
+        ReleaseHitFilter();
     }
 
     void OnDestroy()
@@ -905,5 +911,31 @@ public class Level2TutorialController : MonoBehaviour
             return;
         visionMask.UpdateRadius(savedVisionRadius);
         visionRadiusCaptured = false;
+    }
+
+    void ApplyHitFilter()
+    {
+        if (ClickToSmite.HitFilter == FilterHits)
+            return;
+        previousHitFilter = ClickToSmite.HitFilter;
+        ClickToSmite.HitFilter = FilterHits;
+    }
+
+    void ReleaseHitFilter()
+    {
+        if (ClickToSmite.HitFilter == FilterHits)
+            ClickToSmite.HitFilter = previousHitFilter;
+        previousHitFilter = null;
+    }
+
+    bool FilterHits(NPCIdentity identity)
+    {
+        if (previousHitFilter != null && !previousHitFilter(identity))
+            return false;
+
+        if (!tutorialActive)
+            return true;
+
+        return currentStep != Step.ShowImpostorColor;
     }
 }
