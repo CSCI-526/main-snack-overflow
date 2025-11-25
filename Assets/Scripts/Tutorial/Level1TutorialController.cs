@@ -98,9 +98,8 @@ float pendingVisionTargetRadius;
     GameObject tutorialCivilian;
     NPCIdentity tutorialImpostorId;
     NPCIdentity tutorialCivilianId;
-    TutorialDrifter impostorDrifter;
+TutorialDrifter impostorDrifter;
 TutorialDrifter civilianDrifter;
-string civilianColorDisplayName = "civilian";
 string civilianColorHex = "#F48028";
 string impostorColorHex = "#FF4F4F";
 TutorialVisionHint visionHint;
@@ -330,7 +329,6 @@ TutorialVisionHint visionHint;
         int civilianColorId = GetCivilianColorId(impostorColorId);
         tutorialCivilian = InstantiateTutorialNpc(false, civilianPos, civilianColorId, out tutorialCivilianId, out civilianDrifter);
         civilianColorHex = ColorUtility.ToHtmlStringRGB(TutorialCivilianColor);
-        civilianColorDisplayName = "orange";
         tutorialCivilianColorId = civilianColorId;
         tutorialCivilianSpawnPos = civilianPos;
 

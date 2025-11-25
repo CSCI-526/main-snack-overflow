@@ -35,8 +35,11 @@ public class Level2TutorialController : MonoBehaviour
 
     Transform tutorialPothole;
     Transform tutorialMud;
+    Transform lastPotholeTarget;
     Material tutorialPotholeMaterial;
     Material tutorialMudMaterial;
+    Renderer tutorialPotholeRenderer;
+    Renderer tutorialMudRenderer;
     Vector3 tutorialCenter;
 
 
@@ -57,6 +60,8 @@ public class Level2TutorialController : MonoBehaviour
     RectTransform arrowRoot;
     RectTransform arrowShaft;
     RectTransform arrowHead;
+    bool arrowBaseOverrideActive;
+    Vector2 arrowBaseOverride;
     float colorSwapTimer = -1f;
     bool colorSwapTriggered;
 
@@ -69,9 +74,12 @@ public class Level2TutorialController : MonoBehaviour
     static readonly Vector2 MessageAnchor = new Vector2(0.5f, 0.78f);
     static readonly Vector2 MessageOffset = Vector2.zero;
     static readonly Vector2 ArrowTailOffset = new(-140f, 55f);
+    const float MessageArrowSpacing = -5f;
+    const float MessageArrowInset = 0f;
     const float ArrowHeadSize = 26f;
     const float ArrowThickness = 12f;
     const float ArrowTargetHeight = 1.4f;
+    [SerializeField] Vector3 mudHighlightWorldPosition = new(-0.093f, 0f, 0.165f);
     static readonly Color TutorialRed = new Color(0.93f, 0.17f, 0.19f);
     static readonly Color TutorialOrange = new Color(1f, 0.57f, 0.07f);
 
@@ -197,7 +205,7 @@ public class Level2TutorialController : MonoBehaviour
         colorSwapTriggered = false;
         UpdateImpostorColor(TutorialRed);
         UpdateImpostorPreviewMessage();
-        arrowRoot?.gameObject.SetActive(true);
+        PointArrowAt(tutorialImpostor ? tutorialImpostor.transform : null);
 
         continueButton.gameObject.SetActive(false);
         continueButton.interactable = false;
@@ -209,15 +217,18 @@ public class Level2TutorialController : MonoBehaviour
 
     void ShowPotholeMessage()
     {
-        HideImpostorArrow();
+        HideArrow(true);
         CleanupTutorialImpostor();
         string message =
             "<b>Avoid <color=#5C5C5C>Grey Potholes</color></b>\n" +
-            "Stepping on a pothole puts you in a temporary timeout.\n" +
-            "Keep your path clear.";
+            "Stepping on a pothole puts you in 3 second timeout.";
 
         SetMessage(message);
+        instructions?.SetVisionMaskActive(false);
         FocusOnTag("Pothole");
+        var target = FindPotholeBetweenMudPatches() ?? FindNearestPotholeToMessage() ?? tutorialPothole ?? FindTargetWithTag("Pothole");
+        lastPotholeTarget = target;
+        PointArrowAt(target, GetMessageArrowBaseTowards(target));
 
         continueButton.onClick.RemoveAllListeners();
         continueButton.onClick.AddListener(ShowMudMessage);
@@ -228,16 +239,22 @@ public class Level2TutorialController : MonoBehaviour
 
     void ShowMudMessage()
     {
-        HideImpostorArrow();
+        HideArrow(true);
+        instructions?.SetVisionMaskActive(false);
         CleanupTutorialImpostor();
         string message =
             "<b>Watch the <color=#5C2B0F>Brown Mud Patches</color></b>\n" +
-            "Mud patches slow your movement speed.\n" +
-            "Stay on clean roads to keep pace.\n" +
+            "Mud patches slow your speed.\n" +
             "Press Continue to begin the mission.";
 
         SetMessage(message);
         FocusOnTag("Mud");
+        var mudTarget = FindMudPatchLeftOf(lastPotholeTarget) ??
+            FindMudPatchNearWorldPoint(mudHighlightWorldPosition) ??
+            FindMudPatchNearMessage() ??
+            FindMudPatchBetweenPotholes() ??
+            tutorialMud ?? FindTargetWithTag("Mud");
+        PointArrowAt(mudTarget, GetMessageArrowBaseTowards(mudTarget));
 
         continueButton.onClick.RemoveAllListeners();
         continueButton.onClick.AddListener(FinishTutorial);
@@ -272,6 +289,7 @@ public class Level2TutorialController : MonoBehaviour
         RestoreVisionRadius();
         CleanupTutorialHazards();
         CleanupTutorialImpostor();
+        HideArrow(true);
         ReleaseHitFilter();
     }
 
@@ -413,10 +431,36 @@ public class Level2TutorialController : MonoBehaviour
         messageText.text = text;
     }
 
-    void HideImpostorArrow()
+    void HideArrow(bool clearTarget = false)
     {
+        if (clearTarget)
+            arrowTarget = null;
+        arrowBaseOverrideActive = false;
         if (arrowRoot)
             arrowRoot.gameObject.SetActive(false);
+    }
+
+    void PointArrowAt(Transform target, Vector2? baseOverride = null)
+    {
+        if (!target)
+        {
+            HideArrow(true);
+            return;
+        }
+
+        arrowTarget = target;
+        if (baseOverride.HasValue)
+        {
+            arrowBaseOverride = baseOverride.Value;
+            arrowBaseOverrideActive = true;
+        }
+        else
+        {
+            arrowBaseOverrideActive = false;
+        }
+        if (arrowRoot && !arrowRoot.gameObject.activeSelf)
+            arrowRoot.gameObject.SetActive(true);
+        UpdateTutorialArrow();
     }
 
     void FocusOnTag(string tag)
@@ -463,6 +507,290 @@ public class Level2TutorialController : MonoBehaviour
         }
     }
 
+    Vector2? GetMessageArrowBase()
+    {
+        if (!messagePanel)
+            return null;
+
+        float yOffset = -messagePanel.rect.height * 0.5f - MessageArrowSpacing;
+        var panelPos = messagePanel.localPosition;
+        return new Vector2(panelPos.x, panelPos.y + yOffset);
+    }
+
+    Vector2? GetMessageArrowBaseTowards(Transform target)
+    {
+        var basePos = GetMessageArrowBase();
+        if (!basePos.HasValue || !target)
+            return basePos;
+        if (!TryConvertWorldToCanvasLocal(target.position, out var targetLocal))
+            return basePos;
+
+        Vector2 dir = targetLocal - basePos.Value;
+        if (dir.sqrMagnitude < 0.01f)
+            return basePos;
+
+        dir.Normalize();
+        return basePos.Value + dir * MessageArrowInset;
+    }
+
+    bool TryConvertWorldToCanvasLocal(Vector3 world, out Vector2 local)
+    {
+        local = default;
+        if (!canvasRect)
+            return false;
+        if (!mainCam)
+            mainCam = Camera.main;
+
+        Vector2 screen = RectTransformUtility.WorldToScreenPoint(mainCam, world);
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,
+            screen,
+            canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+            out local);
+    }
+
+    Transform FindNearestPotholeToMessage()
+    {
+        if (!mainCam)
+            mainCam = Camera.main;
+
+        Vector2 referenceScreen = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        if (messagePanel)
+        {
+            referenceScreen = RectTransformUtility.WorldToScreenPoint(
+                canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+                messagePanel.position);
+        }
+
+        Transform best = null;
+        float bestDist = float.MaxValue;
+
+        Action<Transform> consider = candidate =>
+        {
+            if (!candidate || !mainCam)
+                return;
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(mainCam, candidate.position);
+            float dist = (screen - referenceScreen).sqrMagnitude;
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = candidate;
+            }
+        };
+
+        consider(tutorialPothole);
+        var existing = GameObject.FindGameObjectsWithTag("Pothole");
+        if (existing != null)
+            foreach (var obj in existing)
+                if (obj)
+                    consider(obj.transform);
+
+        return best;
+    }
+
+    Transform FindPotholeBetweenMudPatches()
+    {
+        var potholes = GameObject.FindGameObjectsWithTag("Pothole");
+        var muds = GameObject.FindGameObjectsWithTag("Mud");
+        if (potholes == null || potholes.Length == 0 || muds == null || muds.Length == 0)
+            return null;
+
+        Transform best = null;
+        float bestScore = float.MaxValue;
+        foreach (var potholeObj in potholes)
+        {
+            if (!potholeObj)
+                continue;
+            if (tutorialPothole && potholeObj.transform == tutorialPothole)
+                continue;
+
+            Vector3 potholePos = potholeObj.transform.position;
+            float nearest = float.MaxValue;
+            float secondNearest = float.MaxValue;
+
+            foreach (var mudObj in muds)
+            {
+                if (!mudObj)
+                    continue;
+                if (tutorialMud && mudObj.transform == tutorialMud)
+                    continue;
+
+                float d = Vector3.SqrMagnitude(mudObj.transform.position - potholePos);
+                if (d < nearest)
+                {
+                    secondNearest = nearest;
+                    nearest = d;
+                }
+                else if (d < secondNearest)
+                {
+                    secondNearest = d;
+                }
+            }
+
+            if (secondNearest < float.MaxValue)
+            {
+                float score = nearest + secondNearest;
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = potholeObj.transform;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    Transform FindMudPatchBetweenPotholes()
+    {
+        var muds = GameObject.FindGameObjectsWithTag("Mud");
+        var potholes = GameObject.FindGameObjectsWithTag("Pothole");
+        if (muds == null || muds.Length == 0 || potholes == null || potholes.Length == 0)
+            return null;
+
+        Transform best = null;
+        float bestScore = float.MaxValue;
+        foreach (var mudObj in muds)
+        {
+            if (!mudObj)
+                continue;
+            if (tutorialMud && mudObj.transform == tutorialMud)
+                continue;
+
+            Vector3 mudPos = mudObj.transform.position;
+            float nearest = float.MaxValue;
+            float secondNearest = float.MaxValue;
+
+            foreach (var potholeObj in potholes)
+            {
+                if (!potholeObj)
+                    continue;
+                if (tutorialPothole && potholeObj.transform == tutorialPothole)
+                    continue;
+
+                float d = Vector3.SqrMagnitude(potholeObj.transform.position - mudPos);
+                if (d < nearest)
+                {
+                    secondNearest = nearest;
+                    nearest = d;
+                }
+                else if (d < secondNearest)
+                {
+                    secondNearest = d;
+                }
+            }
+
+            if (secondNearest < float.MaxValue)
+            {
+                float score = nearest + secondNearest;
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = mudObj.transform;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    Transform FindMudPatchLeftOf(Transform referencePothole)
+    {
+        if (!referencePothole)
+            return null;
+
+        var muds = GameObject.FindGameObjectsWithTag("Mud");
+        if (muds == null || muds.Length == 0)
+            return null;
+
+        Transform best = null;
+        float bestScore = float.MaxValue;
+        Vector3 refPos = referencePothole.position;
+        foreach (var mudObj in muds)
+        {
+            if (!mudObj)
+                continue;
+            if (tutorialMud && mudObj.transform == tutorialMud)
+                continue;
+
+            Vector3 mudPos = mudObj.transform.position;
+            if (mudPos.x >= refPos.x)
+                continue;
+
+            float dx = refPos.x - mudPos.x;
+            float dz = Mathf.Abs(mudPos.z - refPos.z);
+            float score = dx * dx + dz * dz;
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = mudObj.transform;
+            }
+        }
+
+        return best;
+    }
+
+    Transform FindMudPatchNearMessage()
+    {
+        if (!mainCam)
+            mainCam = Camera.main;
+
+        var muds = GameObject.FindGameObjectsWithTag("Mud");
+        if (muds == null || muds.Length == 0 || !mainCam)
+            return null;
+
+        Vector2 referenceScreen = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        if (messagePanel)
+        {
+            referenceScreen = RectTransformUtility.WorldToScreenPoint(
+                canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+                messagePanel.position);
+        }
+
+        Transform best = null;
+        float bestDist = float.MaxValue;
+        foreach (var mud in muds)
+        {
+            if (!mud)
+                continue;
+            if (tutorialMud && mud.transform == tutorialMud)
+                continue;
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(mainCam, mud.transform.position);
+            float dist = (screen - referenceScreen).sqrMagnitude;
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = mud.transform;
+            }
+        }
+
+        return best;
+    }
+
+    Transform FindMudPatchNearWorldPoint(Vector3 world)
+    {
+        var muds = GameObject.FindGameObjectsWithTag("Mud");
+        if (muds == null || muds.Length == 0)
+            return null;
+
+        Transform best = null;
+        float bestDist = float.MaxValue;
+        foreach (var mud in muds)
+        {
+            if (!mud)
+                continue;
+            if (tutorialMud && mud.transform == tutorialMud)
+                continue;
+            float dist = Vector3.SqrMagnitude(mud.transform.position - world);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = mud.transform;
+            }
+        }
+        return best;
+    }
+
     Transform FindTargetWithTag(string tag)
     {
         var objs = GameObject.FindGameObjectsWithTag(tag);
@@ -504,7 +832,8 @@ public class Level2TutorialController : MonoBehaviour
                 scale: new Vector3(0.8f, 0.02f, 0.8f),
                 color: new Color32(87, 87, 87, 255),
                 shape: PrimitiveType.Cylinder,
-                out tutorialPotholeMaterial);
+                out tutorialPotholeMaterial,
+                out tutorialPotholeRenderer);
         }
 
         if (tutorialMud == null)
@@ -516,12 +845,13 @@ public class Level2TutorialController : MonoBehaviour
                 scale: new Vector3(1.5f, 0.02f, 1.2f),
                 color: new Color32(120, 78, 38, 255),
                 shape: PrimitiveType.Cube,
-                out tutorialMudMaterial);
+                out tutorialMudMaterial,
+                out tutorialMudRenderer);
         }
     }
 
     Transform CreateHazard(string name, string tag, Vector3 position, Vector3 scale,
-        Color color, PrimitiveType shape, out Material matRef)
+        Color color, PrimitiveType shape, out Material matRef, out Renderer rendererRef)
     {
         var go = GameObject.CreatePrimitive(shape);
         go.name = name;
@@ -533,8 +863,9 @@ public class Level2TutorialController : MonoBehaviour
             Destroy(col);
 
         matRef = CreateTutorialMaterial(color);
-        var renderer = go.GetComponent<Renderer>();
-        renderer.sharedMaterial = matRef;
+        rendererRef = go.GetComponent<Renderer>();
+        if (rendererRef)
+            rendererRef.sharedMaterial = matRef;
         go.hideFlags = HideFlags.HideAndDontSave;
         return go.transform;
     }
@@ -553,6 +884,8 @@ public class Level2TutorialController : MonoBehaviour
         tutorialMud = null;
         tutorialPotholeMaterial = null;
         tutorialMudMaterial = null;
+        tutorialPotholeRenderer = null;
+        tutorialMudRenderer = null;
     }
 
     Material CreateTutorialMaterial(Color color)
@@ -585,8 +918,8 @@ public class Level2TutorialController : MonoBehaviour
                     UpdateImpostorPreviewMessage();
                 }
             }
-            UpdateImpostorArrow();
         }
+        UpdateTutorialArrow();
     }
 
     void ShowOverlay(bool show)
@@ -710,7 +1043,7 @@ public class Level2TutorialController : MonoBehaviour
 
     void CleanupTutorialImpostor()
     {
-        HideImpostorArrow();
+        HideArrow(true);
         if (tutorialImpostorMaterials != null)
         {
             foreach (var mat in tutorialImpostorMaterials)
@@ -774,27 +1107,33 @@ public class Level2TutorialController : MonoBehaviour
         }
     }
 
-    void UpdateImpostorArrow()
+    void UpdateTutorialArrow()
     {
-        if (!arrowRoot || !canvasRect || !tutorialImpostor)
+        if (!arrowRoot || !canvasRect || !arrowTarget)
         {
-            HideImpostorArrow();
+            HideArrow();
             return;
         }
         if (!mainCam)
             mainCam = Camera.main;
 
-        Vector3 tipWorld = GetImpostorTip();
+        Vector3 tipWorld = GetArrowTipWorld();
+        if (tipWorld == Vector3.zero)
+        {
+            HideArrow();
+            return;
+        }
+
         Vector2 tipScreen = RectTransformUtility.WorldToScreenPoint(mainCam, tipWorld);
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, tipScreen,
                 canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
                 out var tipLocal))
         {
-            HideImpostorArrow();
+            HideArrow();
             return;
         }
 
-        Vector2 basePos = tipLocal + ArrowTailOffset;
+        Vector2 basePos = arrowBaseOverrideActive ? arrowBaseOverride : tipLocal + ArrowTailOffset;
         arrowRoot.anchoredPosition = basePos;
         Vector2 delta = tipLocal - basePos;
         float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
@@ -809,6 +1148,27 @@ public class Level2TutorialController : MonoBehaviour
         if (arrowHead)
             arrowHead.anchoredPosition = new Vector2(shaftLength, 0f);
         arrowRoot.gameObject.SetActive(true);
+    }
+
+    Vector3 GetArrowTipWorld()
+    {
+        if (!arrowTarget)
+            return Vector3.zero;
+
+        if (arrowTarget == tutorialImpostor)
+            return GetImpostorTip();
+
+        if (arrowTarget == tutorialPothole && tutorialPotholeRenderer)
+            return tutorialPotholeRenderer.bounds.center + Vector3.up * tutorialPotholeRenderer.bounds.extents.y;
+
+        if (arrowTarget == tutorialMud && tutorialMudRenderer)
+            return tutorialMudRenderer.bounds.center + Vector3.up * tutorialMudRenderer.bounds.extents.y;
+
+        var renderer = arrowTarget.GetComponentInChildren<Renderer>();
+        if (renderer)
+            return renderer.bounds.center + Vector3.up * renderer.bounds.extents.y;
+
+        return arrowTarget.position + Vector3.up * ArrowTargetHeight;
     }
 
     Vector3 GetImpostorTip()
