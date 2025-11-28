@@ -1283,6 +1283,26 @@ MonoBehaviour:
   - LvL2
   volume: 0.5
   loop: 1
+  sceneOverrides:
+  - clipResourcePath: Audio/BackgroundMusic3
+    volume: 0.5
+    loop: 1
+    startTimeSeconds: 10
+    scenes:
+    - LvL4
+  - clipResourcePath: Audio/BackgroundMusic
+    volume: 0.65
+    loop: 1
+    startTimeSeconds: 0
+    scenes:
+    - LvL1
+    - LvL2
+  - clipResourcePath: Audio/BackgroundMusic4
+    volume: 0.85
+    loop: 1
+    startTimeSeconds: 0
+    scenes:
+    - LvL3
 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
