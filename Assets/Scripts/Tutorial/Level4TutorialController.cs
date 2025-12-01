@@ -7,7 +7,7 @@ using TMPro;
 [DefaultExecutionOrder(205)]
 public class Level4TutorialController : MonoBehaviour
 {
-    static readonly Vector2 MessageSize = new Vector2(660f, 320f);
+    static readonly Vector2 MessageSize = new Vector2(560f, 240f);
     static readonly Vector2 MessageAnchor = new Vector2(0.5f, 0.72f);
     static readonly Vector2 MessageOffset = new Vector2(0f, 20f);
     const string LevelFourSceneName = "LvL4";
@@ -139,8 +139,7 @@ public class Level4TutorialController : MonoBehaviour
 
         string message =
             "<b>Flashing lights hide the impostor</b>\n" +
-            "The disco glow hits everyone and makes it confusing to spot the impostor.\n" +
-            "Keep your vision sharp so the impostor cannot slip past you.";
+            "The disco glow hits everyone and makes it confusing to spot the impostor.\n";
         SetMessage(message);
 
         continueButton.onClick.RemoveAllListeners();
@@ -251,9 +250,9 @@ public class Level4TutorialController : MonoBehaviour
 
         messageText = textGO.AddComponent<TextMeshProUGUI>();
         messageText.font = GetFontAsset();
-        messageText.fontSize = 34f;
+        messageText.fontSize = 32f;
         messageText.color = Color.white;
-        messageText.alignment = TextAlignmentOptions.Midline;
+        messageText.alignment = TextAlignmentOptions.Center;
         messageText.enableWordWrapping = true;
 
         continueButton = CreateButton("ContinueButton", new Vector2(0.5f, 0.18f), "Continue");
