@@ -39,6 +39,15 @@ public class TimerController : MonoBehaviour
     public float warningThreshold = 15f;                 // last N seconds
     public Color normalColor = Color.white;
     public Color warningColor = new Color(0.55f, 0f, 0f, 1f);   // dark red
+    [Range(0f, 1f)] public float warningBlinkMinAlpha = 0.35f;
+    [Range(0f, 1f)] public float warningBlinkMaxAlpha = 1f;
+    public float warningBlinkSpeed = 6f;
+
+    [Header("Warning Audio")]
+    [SerializeField] AudioClip clockTickingClip;
+    [Tooltip("Optional resource path override if the clip reference is missing.")]
+    public string clockTickingResourcePath = "Audio/clocktickingsound";
+    [Range(0f, 1.5f)] public float clockTickingVolume = 1f;
 
     [Header("Timer Background")]
     public Image timerBackground;
@@ -75,12 +84,15 @@ RectTransform _timerContainer;
 Vector2 _timerContainerBaseAnchoredPos;
 bool _hasTimerBasePos;
 float _lastBackgroundSide;
+    AudioSource _warningAudioSource;
+    bool _warningActive;
 
     const int TOP_SORT_ORDER = 5000;
     const int TIMER_SORT_ORDER = 4500;
 
     void Awake() => SceneManager.sceneLoaded += OnSceneLoaded;
     void OnDestroy() => SceneManager.sceneLoaded -= OnSceneLoaded;
+    void OnDisable() => StopWarningAudio();
 
     void Start() => ResetAndShowPaused();
 
@@ -146,6 +158,8 @@ float _lastBackgroundSide;
         timeExpired = false;
         killedAtTimeout = -1;
         remainingAtTimeout = -1;
+        StopWarningAudio();
+        _warningActive = false;
 
         if (timerText) timerText.gameObject.SetActive(true);
         if (gameOverPanel) gameOverPanel.SetActive(false);
@@ -164,7 +178,12 @@ float _lastBackgroundSide;
 
     }
 
-    public void StopTimer() => isRunning = false;
+    public void StopTimer()
+    {
+        isRunning = false;
+        StopWarningAudio();
+        _warningActive = false;
+    }
 
     public void ResumeTimer()
     {
@@ -193,6 +212,8 @@ float _lastBackgroundSide;
         UpdateTimerUI();
         EnsureTimerOnTop();
         UpdateTimerBackgroundVisual(false);
+        StopWarningAudio();
+        _warningActive = false;
     }
 
     void UpdateTimerUI()
@@ -216,7 +237,11 @@ float _lastBackgroundSide;
         else
         {
             // warning state: dark red + beating
-            timerText.color = warningColor;
+            float blink = (Mathf.Sin(Time.unscaledTime * warningBlinkSpeed) + 1f) * 0.5f;
+            float alpha = Mathf.Lerp(warningBlinkMinAlpha, warningBlinkMaxAlpha, blink);
+            var warnColor = warningColor;
+            warnColor.a = Mathf.Clamp01(alpha);
+            timerText.color = warnColor;
             timerText.fontSize = warningFontSize;
 
             if (_rt)
@@ -229,7 +254,63 @@ float _lastBackgroundSide;
         }
 
         UpdateTimerBackgroundVisual(inWarning);
+        UpdateWarningState(inWarning);
         ApplyTimerPositionOffset();
+    }
+
+    void UpdateWarningState(bool inWarning)
+    {
+        if (inWarning == _warningActive)
+            return;
+
+        _warningActive = inWarning;
+        if (_warningActive)
+            StartWarningAudio();
+        else
+            StopWarningAudio();
+    }
+
+    void StartWarningAudio()
+    {
+        EnsureWarningAudioSource();
+        EnsureWarningClip();
+
+        if (_warningAudioSource && clockTickingClip)
+        {
+            _warningAudioSource.volume = clockTickingVolume;
+            _warningAudioSource.clip = clockTickingClip;
+            if (!_warningAudioSource.isPlaying)
+                _warningAudioSource.Play();
+        }
+    }
+
+    void StopWarningAudio()
+    {
+        if (_warningAudioSource && _warningAudioSource.isPlaying)
+            _warningAudioSource.Stop();
+    }
+
+    void EnsureWarningAudioSource()
+    {
+        if (_warningAudioSource)
+            return;
+
+        var go = new GameObject("TimerWarningAudio");
+        go.transform.SetParent(transform, false);
+        _warningAudioSource = go.AddComponent<AudioSource>();
+        _warningAudioSource.playOnAwake = false;
+        _warningAudioSource.loop = true;
+        _warningAudioSource.spatialBlend = 0f;
+        _warningAudioSource.volume = clockTickingVolume;
+    }
+
+    void EnsureWarningClip()
+    {
+        if (clockTickingClip)
+            return;
+
+        if (!string.IsNullOrEmpty(clockTickingResourcePath))
+            clockTickingClip = Resources.Load<AudioClip>(clockTickingResourcePath);
     }
 
     void EnsureTimerBackground()
@@ -404,6 +485,8 @@ float _lastBackgroundSide;
 
         isGameOver = true;
         isRunning = false;
+        StopWarningAudio();
+        _warningActive = false;
 
         
         TryFillGameOverScore();
