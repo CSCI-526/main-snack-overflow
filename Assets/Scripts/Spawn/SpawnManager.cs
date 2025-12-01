@@ -417,21 +417,7 @@ public class SpawnManager : MonoBehaviour
 
     void SpawnPlayer()
     {
-        Vector3 p = playerSpawn ? playerSpawn.position : Vector3.zero;
-        p.y = 0f;
-
-        var existing = FindObjectOfType<PlayerMover>();
-        if (existing != null)
-        {
-            existing.transform.position = p;
-            if (playerParent != null && existing.transform.parent != playerParent)
-                existing.transform.SetParent(playerParent);
-            usedSpawnPositions.Add(p);
-            return;
-        }
-
-        Instantiate(playerPrefab, p, Quaternion.identity, playerParent);
-        usedSpawnPositions.Add(p);
+        SpawnPlayerInternal(true);
     }
 
     void OnDisable()
@@ -914,6 +900,36 @@ public class SpawnManager : MonoBehaviour
     return ps;
 }
 
+    public PlayerMover EnsurePlayerForTutorial()
+    {
+        return SpawnPlayerInternal(false);
+    }
 
+    PlayerMover SpawnPlayerInternal(bool recordUsedPosition)
+    {
+        Vector3 p = playerSpawn ? playerSpawn.position : Vector3.zero;
+        p.y = 0f;
 
+        var existing = FindObjectOfType<PlayerMover>();
+        if (existing != null)
+        {
+            existing.transform.position = p;
+            if (playerParent != null && existing.transform.parent != playerParent)
+                existing.transform.SetParent(playerParent);
+            if (recordUsedPosition)
+                usedSpawnPositions.Add(p);
+            return existing;
+        }
+
+        if (!playerPrefab)
+        {
+            Debug.LogWarning("[SpawnManager] Cannot spawn player: missing prefab.");
+            return null;
+        }
+
+        var instance = Instantiate(playerPrefab, p, Quaternion.identity, playerParent);
+        if (recordUsedPosition)
+            usedSpawnPositions.Add(p);
+        return instance.GetComponent<PlayerMover>();
+    }
 }

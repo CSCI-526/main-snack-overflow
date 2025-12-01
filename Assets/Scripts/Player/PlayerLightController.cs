@@ -49,6 +49,7 @@ public class PlayerLightController : MonoBehaviour
     float playerGlowBlend;
     MaterialPropertyBlock[] glowBlocks;
     Color[] glowBaseEmission;
+    bool passiveDecayPaused;
 
     void Awake()
     {
@@ -121,13 +122,13 @@ public class PlayerLightController : MonoBehaviour
             return;
 
         InitializeRuntimeBounds();
-        if (passiveDecayPerSecond > 0f && targetLight.range > RangeMin)
+        if (!passiveDecayPaused && passiveDecayPerSecond > 0f && targetLight.range > RangeMin)
         {
             float delta = passiveDecayPerSecond * Time.deltaTime;
             SetRange(targetLight.range - delta);
         }
 
-        if (!linkIntensityToRange && passiveIntensityDecayPerSecond > 0f && targetLight.intensity > IntensityMin)
+        if (!passiveDecayPaused && !linkIntensityToRange && passiveIntensityDecayPerSecond > 0f && targetLight.intensity > IntensityMin)
         {
             float delta = passiveIntensityDecayPerSecond * Time.deltaTime;
             SetIntensity(targetLight.intensity - delta);
@@ -145,6 +146,11 @@ public class PlayerLightController : MonoBehaviour
             SetIntensity(baseIntensityValue + amount * perCollectibleIntensityIncrease);
         TriggerPickupFlash();
         TriggerPlayerGlow();
+    }
+
+    public void SetPassiveDecayPaused(bool paused)
+    {
+        passiveDecayPaused = paused;
     }
 
     void SetRange(float value)

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -12,6 +13,7 @@ public class LightCollectible : MonoBehaviour
 
     bool collected;
     bool magnetActive;
+    public static event Action<LightCollectible, PlayerMover> AnyCollected;
 
     void Reset()
     {
@@ -65,6 +67,8 @@ public class LightCollectible : MonoBehaviour
         if (PlayerLightController.Instance != null)
             PlayerLightController.Instance.AddLightEnergy(lightReward);
 
+        AnyCollected?.Invoke(this, player);
+
         if (destroyOnPickup)
             Destroy(gameObject);
     }
@@ -76,4 +80,3 @@ public class LightCollectible : MonoBehaviour
 
     public bool MagnetActive => magnetActive;
 }
-

@@ -743,9 +743,8 @@ TutorialVisionHint visionHint;
         arrowRoot.gameObject.SetActive(PointArrowToTimer());
 
         string message =
-            "<b>Time to Hunt</b>\n" +
             "You have <b>1 minute 30 seconds</b> to eliminate all 10 impostors.\n" +
-            "Press Continue to begin the mission.";
+            "Press Continue to start.";
 
         SetMessage(
             message,
@@ -1404,7 +1403,6 @@ TutorialVisionHint visionHint;
     void ShowMovementMessage()
     {
         string message =
-            "<b>Move Around</b>\n" +
             "Use <b>W A S D</b> or the <b>Arrow Keys</b> to walk.\n" +
             "Take a few steps to continue.";
 

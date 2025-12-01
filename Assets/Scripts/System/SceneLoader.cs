@@ -5,6 +5,7 @@ using UnityEngine.Rendering;
 public class SceneLoader : MonoBehaviour {
     const string LevelThreeQuality = "LvL3";
     const string DefaultQuality = "Ultra";
+    [SerializeField] bool ignoreProgressLocks = true;
     public void Load(string sceneName) => SceneManager.LoadScene(sceneName);
     public void Quit() => Application.Quit();
 
@@ -44,7 +45,7 @@ public class SceneLoader : MonoBehaviour {
     public void LoadLevel2()
     {
         RestoreDefaultQuality();
-        if (!ProgressManager.IsLevelUnlocked(2))
+        if (!CanLoadLevel(2))
         {
             Debug.LogWarning("Tried to load Level 2 before Level 1 was complete.");
             return;
@@ -52,7 +53,7 @@ public class SceneLoader : MonoBehaviour {
         SceneManager.LoadScene("LvL2");
     }
     public void LoadLevel3() {
-        if (!ProgressManager.IsLevelUnlocked(3))
+        if (!CanLoadLevel(3))
         {
             Debug.LogWarning("Tried to load Level 3 before it was unlocked.");
             return;
@@ -62,7 +63,7 @@ public class SceneLoader : MonoBehaviour {
     }
 
     public void LoadLevel4() {
-        if (!ProgressManager.IsLevelUnlocked(4))
+        if (!CanLoadLevel(4))
         {
             Debug.LogWarning("Tried to load Level 4 before it was unlocked.");
             return;
@@ -76,4 +77,6 @@ public class SceneLoader : MonoBehaviour {
         GameMode.SetTutorial(false);
         SceneManager.LoadScene("Home", LoadSceneMode.Single);
     }
+
+    bool CanLoadLevel(int level) => ignoreProgressLocks || ProgressManager.IsLevelUnlocked(level);
 }

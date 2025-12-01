@@ -201,10 +201,15 @@ public bool logSpeed = false;
         float newUntil = Mathf.Max(stunUntil, Time.time + clamped);
         bool applied = newUntil > stunUntil && clamped > 0f;
         stunUntil = newUntil;
+        ForceStopMovement();
+        return applied;
+    }
+
+    public void ForceStopMovement()
+    {
         desiredVel = Vector3.zero;
         if (rb != null)
             rb.velocity = Vector3.zero;
-        return applied;
     }
 
     void HandleHitResolved(NPCIdentity identity, bool correct)
