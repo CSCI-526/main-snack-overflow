@@ -40,11 +40,28 @@ public class TimerController : MonoBehaviour
     public Color normalColor = Color.white;
     public Color warningColor = new Color(0.55f, 0f, 0f, 1f);   // dark red
 
+    [Header("Timer Background")]
+    public Image timerBackground;
+    public Color backgroundColor = new Color(0.2f, 0.45f, 0.9f, 0.95f);
+    public Color warningBackgroundColor = new Color(1f, 0.45f, 0.2f, 0.95f);
+    [Tooltip("X = horizontal padding, Y = vertical padding (in pixels).")]
+    public Vector2 backgroundPadding = new Vector2(20f, 8f);
+    [Tooltip("If true, background stays square; otherwise it can be rectangular.")]
+    public bool maintainSquareBackground = false;
+
+    [Header("Timer Placement")]
+    [Tooltip("Offset applied to the timer badge (parent rect if available).")]
+    public Vector2 timerPositionOffset = new Vector2(0f, -45f);
+    [Tooltip("Extra padding between the timer badge and the top screen edge.")]
+    public float topEdgeMargin = 1f;
+    [Tooltip("Guarantees a minimum gap even for scenes with older serialized values.")]
+    public float minimumTopEdgeMargin = 12f;
+
     [Tooltip("Normal (smaller) font size.")]
-    public float baseFontSize = 36f;
+    public float baseFontSize = 60f;
 
     [Tooltip("Font size during warning (slightly larger).")]
-    public float warningFontSize = 44f;
+    public float warningFontSize = 72f;
 
     [Tooltip("Beat/pulse scale range during warning.")]
     public float pulseScaleMin = 0.95f, pulseScaleMax = 1.15f;
@@ -53,6 +70,11 @@ public class TimerController : MonoBehaviour
     public float pulseSpeed = 5f;
 
 RectTransform _rt;
+RectTransform _backgroundRect;
+RectTransform _timerContainer;
+Vector2 _timerContainerBaseAnchoredPos;
+bool _hasTimerBasePos;
+float _lastBackgroundSide;
 
     const int TOP_SORT_ORDER = 5000;
     const int TIMER_SORT_ORDER = 4500;
@@ -83,6 +105,10 @@ RectTransform _rt;
             timerText.fontSize = baseFontSize;
             _rt.localScale = Vector3.one;
             EnsureTimerOnTop();
+            EnsureTimerBackground();
+            UpdateTimerBackgroundVisual(false);
+            CacheTimerContainer();
+            ApplyTimerPositionOffset();
         }
 
         if (!gameOverPanel)
@@ -166,41 +192,210 @@ RectTransform _rt;
         remainingAtTimeout = -1;
         UpdateTimerUI();
         EnsureTimerOnTop();
+        UpdateTimerBackgroundVisual(false);
     }
 
     void UpdateTimerUI()
-{
-    if (!timerText) return;
-
-    int m = Mathf.FloorToInt(currentTime / 60f);
-    int s = Mathf.FloorToInt(currentTime % 60f);
-    timerText.text = $"{m:00}:{s:00}";
-
-    // --- visual state ---
-    bool inWarning = isRunning && !isGameOver && currentTime <= warningThreshold && currentTime > 0f;
-
-    if (!inWarning)
     {
-        // normal state
-        timerText.color = normalColor;
-        timerText.fontSize = baseFontSize;
-        if (_rt) _rt.localScale = Vector3.one;
-    }
-    else
-    {
-        // warning state: dark red + beating
-        timerText.color = warningColor;
-        timerText.fontSize = warningFontSize;
+        if (!timerText) return;
 
-        if (_rt)
+        int m = Mathf.FloorToInt(currentTime / 60f);
+        int s = Mathf.FloorToInt(currentTime % 60f);
+        timerText.text = $"{m:00}:{s:00}";
+
+        // --- visual state ---
+        bool inWarning = isRunning && !isGameOver && currentTime <= warningThreshold && currentTime > 0f;
+
+        if (!inWarning)
         {
-            // nice smooth beat using sine
-            float t = (Mathf.Sin(Time.unscaledTime * pulseSpeed) + 1f) * 0.5f;
-            float sc = Mathf.Lerp(pulseScaleMin, pulseScaleMax, t);
-            _rt.localScale = new Vector3(sc, sc, 1f);
+            // normal state
+            timerText.color = normalColor;
+            timerText.fontSize = baseFontSize;
+            if (_rt) _rt.localScale = Vector3.one;
+        }
+        else
+        {
+            // warning state: dark red + beating
+            timerText.color = warningColor;
+            timerText.fontSize = warningFontSize;
+
+            if (_rt)
+            {
+                // nice smooth beat using sine
+                float t = (Mathf.Sin(Time.unscaledTime * pulseSpeed) + 1f) * 0.5f;
+                float sc = Mathf.Lerp(pulseScaleMin, pulseScaleMax, t);
+                _rt.localScale = new Vector3(sc, sc, 1f);
+            }
+        }
+
+        UpdateTimerBackgroundVisual(inWarning);
+        ApplyTimerPositionOffset();
+    }
+
+    void EnsureTimerBackground()
+    {
+        if (!timerText)
+            return;
+
+        if (!timerBackground)
+        {
+            var parent = timerText.transform.parent;
+            if (parent)
+            {
+                var existing = parent.Find("TimerBackground");
+                if (existing)
+                    timerBackground = existing.GetComponent<Image>();
+            }
+        }
+
+        if (!timerBackground)
+        {
+            Transform parent = timerText.transform.parent;
+            var bgGO = new GameObject("TimerBackground", typeof(RectTransform), typeof(Image));
+            var rect = bgGO.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            timerBackground = bgGO.GetComponent<Image>();
+            timerBackground.raycastTarget = false;
+        }
+
+        _backgroundRect = timerBackground ? timerBackground.rectTransform : null;
+        MaintainBackgroundSiblingOrder();
+    }
+
+    void UpdateTimerBackgroundVisual(bool inWarning)
+    {
+        if (!timerText)
+            return;
+
+        if (!timerBackground)
+            EnsureTimerBackground();
+        if (!timerBackground)
+            return;
+
+        if (!_backgroundRect)
+            _backgroundRect = timerBackground.rectTransform;
+
+        var textRect = _rt ? _rt : timerText.rectTransform;
+        CopyRectTransform(_backgroundRect, textRect);
+
+        float width = Mathf.Max(timerText.preferredWidth, textRect.rect.width);
+        float height = Mathf.Max(timerText.preferredHeight, textRect.rect.height);
+
+        if (width <= 0f)
+            width = timerText.fontSize * 2f;
+        if (height <= 0f)
+            height = timerText.fontSize * 1.4f;
+
+        float paddedWidth = width + Mathf.Max(0f, backgroundPadding.x);
+        float paddedHeight = height + Mathf.Max(0f, backgroundPadding.y);
+
+        float targetWidth = paddedWidth;
+        float targetHeight = paddedHeight;
+        if (maintainSquareBackground)
+        {
+            float side = Mathf.Max(paddedWidth, paddedHeight);
+            targetWidth = targetHeight = side;
+            _lastBackgroundSide = side;
+        }
+        else
+        {
+            _lastBackgroundSide = targetHeight;
+        }
+
+        _backgroundRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, targetWidth);
+        _backgroundRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, targetHeight);
+        timerBackground.color = inWarning ? warningBackgroundColor : backgroundColor;
+        _lastBackgroundSide = Mathf.Max(targetWidth, targetHeight);
+
+        MaintainBackgroundSiblingOrder();
+        timerBackground.gameObject.SetActive(timerText.gameObject.activeSelf);
+    }
+
+    void CacheTimerContainer()
+    {
+        _timerContainer = null;
+        if (!timerText)
+            return;
+
+        var parent = timerText.transform.parent as RectTransform;
+        _timerContainer = parent ? parent : _rt;
+        if (_timerContainer && !_hasTimerBasePos)
+        {
+            _timerContainerBaseAnchoredPos = _timerContainer.anchoredPosition;
+            _hasTimerBasePos = true;
         }
     }
-}
+
+    void ApplyTimerPositionOffset()
+    {
+        if (!_rt)
+        {
+            if (timerText) _rt = timerText.rectTransform;
+            else return;
+        }
+
+        if (_timerContainer == null || _timerContainer != timerText.transform.parent)
+            CacheTimerContainer();
+        if (!_timerContainer)
+            return;
+
+        if (!_hasTimerBasePos)
+        {
+            _timerContainerBaseAnchoredPos = _timerContainer.anchoredPosition;
+            _hasTimerBasePos = true;
+        }
+
+        Vector2 desired = _timerContainerBaseAnchoredPos + timerPositionOffset;
+
+        float height = maintainSquareBackground ? _lastBackgroundSide : 0f;
+        if (height <= 0f && _backgroundRect)
+            height = _backgroundRect.rect.height;
+        if (height <= 0f && _rt)
+            height = _rt.rect.height;
+        if (height <= 0f)
+            height = 120f;
+
+        float enforcedMargin = Mathf.Max(topEdgeMargin, minimumTopEdgeMargin);
+        float minCenterY = -(height * 0.5f + enforcedMargin);
+        desired.y = Mathf.Min(desired.y, minCenterY);
+
+        if (_timerContainer.anchoredPosition != desired)
+            _timerContainer.anchoredPosition = desired;
+    }
+
+    void MaintainBackgroundSiblingOrder()
+    {
+        if (!timerBackground || !timerText)
+            return;
+
+        var bgTransform = timerBackground.transform;
+        var textTransform = timerText.transform;
+
+        if (bgTransform.parent != textTransform.parent)
+        {
+            bgTransform.SetParent(textTransform.parent, false);
+        }
+
+        if (!bgTransform.parent)
+            return;
+
+        int targetIndex = Mathf.Max(0, textTransform.GetSiblingIndex());
+        bgTransform.SetSiblingIndex(targetIndex);
+        textTransform.SetSiblingIndex(bgTransform.GetSiblingIndex() + 1);
+    }
+
+    void CopyRectTransform(RectTransform target, RectTransform source)
+    {
+        if (!target || !source)
+            return;
+
+        target.anchorMin = source.anchorMin;
+        target.anchorMax = source.anchorMax;
+        target.pivot = source.pivot;
+        target.anchoredPosition = source.anchoredPosition;
+        target.localScale = source.localScale;
+        target.localRotation = source.localRotation;
+    }
 
 
     void GameOver()

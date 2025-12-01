@@ -17852,8 +17852,8 @@ MonoBehaviour:
   warningThreshold: 15
   normalColor: {r: 1, g: 1, b: 1, a: 1}
   warningColor: {r: 0.55, g: 0, b: 0, a: 1}
-  baseFontSize: 36
-  warningFontSize: 44
+  baseFontSize: 60
+  warningFontSize: 72
   pulseScaleMin: 0.95
   pulseScaleMax: 1.15
   pulseSpeed: 5

@@ -751,12 +751,57 @@ TutorialVisionHint visionHint;
             TimerAnchor,
             TimerOffset + new Vector2(0f, 20f),
             MessageSizeLarge);
+        RepositionTimerBriefingPanel();
 
         continueButton.interactable = true;
         continueButton.gameObject.SetActive(true);
         RefreshOverlayInteractivity();
 
         ConfigureSkipButton(false);
+    }
+
+    void RepositionTimerBriefingPanel()
+    {
+        if (!messagePanel)
+            return;
+
+        messagePanel.anchoredPosition = CalculateTimerBriefingOffset();
+    }
+
+    Vector2 CalculateTimerBriefingOffset()
+    {
+        Vector2 fallback = TimerOffset + new Vector2(0f, -80f);
+        if (!overlayRoot || !canvasRect || timer == null || timer.timerText == null)
+            return fallback;
+
+        var timerRect = timer.timerText.rectTransform;
+        if (!timerRect)
+            return fallback;
+
+        Camera cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        Vector3 timerBottomCenter = timerRect.TransformPoint(new Vector3(timerRect.rect.center.x, timerRect.rect.yMin, 0f));
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(cam, timerBottomCenter);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(overlayRoot, screenPoint, cam, out Vector2 timerLocal))
+            return fallback;
+
+        float panelHeight = messagePanel.rect.height > 0f ? messagePanel.rect.height : MessageSizeLarge.y;
+        float pivotToTop = (1f - messagePanel.pivot.y) * panelHeight;
+        float margin = 15f;
+        float targetY = timerLocal.y - margin - pivotToTop;
+        float targetX = timerLocal.x;
+
+        Vector2 anchorOrigin = AnchorToLocalPoint(overlayRoot, TimerAnchor);
+        Vector2 desiredLocal = new(targetX, targetY);
+        return desiredLocal - anchorOrigin;
+    }
+
+    static Vector2 AnchorToLocalPoint(RectTransform rect, Vector2 anchor)
+    {
+        var r = rect.rect;
+        Vector2 pivot = rect.pivot;
+        float localX = (anchor.x - pivot.x) * r.width;
+        float localY = (anchor.y - pivot.y) * r.height;
+        return new Vector2(localX, localY);
     }
 
     bool PointArrowToTimer()

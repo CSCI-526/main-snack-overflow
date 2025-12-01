@@ -245,7 +245,7 @@ public class Level2TutorialController : MonoBehaviour
         string message =
             "<b>Watch the <color=#5C2B0F>Brown Mud Patches</color></b>\n" +
             "Mud patches slow your speed.\n" +
-            "Press Continue to begin the mission.";
+            "Press Continue to start.";
 
         SetMessage(message);
         FocusOnTag("Mud");
@@ -1090,8 +1090,8 @@ public class Level2TutorialController : MonoBehaviour
         {
             string body =
                 "The color just changed to another color.\n" +
-                "It swaps every 15 seconds, so keep an eye on it.";
-            SetMessage(heading + body);
+                "It swaps every 15 seconds.";
+            SetMessage(body);
         }
     }
 
