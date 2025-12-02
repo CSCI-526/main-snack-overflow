@@ -21,12 +21,19 @@ public class ImpostorTracker : MonoBehaviour
     public TMP_Text impostorText;     
     public GameObject winPanel;       
 
+    [Header("Win Audio")]
+    [SerializeField] AudioClip levelClearClip;
+    [Tooltip("Optional resource path override if the clip reference is missing.")]
+    public string levelClearClipResourcePath = "Audio/LevelClearMusic";
+    [Range(0f, 1.5f)] public float levelClearVolume = 1f;
+
     
     public int TotalSpawned { get; private set; } = 0;
     public int Killed       { get; private set; } = 0;
     public int Remaining    => remaining;
 
     int remaining = 0;
+    AudioSource _winAudioSource;
 
     void Awake()
     {
@@ -96,6 +103,8 @@ public class ImpostorTracker : MonoBehaviour
             yield break;
         }
         if (timer) timer.StopTimer();
+
+        PlayLevelClearAudio();
 
         if (pauseOnWin) Time.timeScale = 0f;
 
@@ -232,6 +241,37 @@ public class ImpostorTracker : MonoBehaviour
 
         var evt = new Button.ButtonClickedEvent();
         field.SetValue(button, evt);
+    }
+
+    void EnsureLevelClearClip()
+    {
+        if (levelClearClip)
+            return;
+
+        if (!string.IsNullOrEmpty(levelClearClipResourcePath))
+            levelClearClip = Resources.Load<AudioClip>(levelClearClipResourcePath);
+    }
+
+    void EnsureWinAudioSource()
+    {
+        if (_winAudioSource)
+            return;
+
+        var go = new GameObject("LevelClearAudio");
+        go.transform.SetParent(transform, false);
+        _winAudioSource = go.AddComponent<AudioSource>();
+        _winAudioSource.playOnAwake = false;
+        _winAudioSource.loop = false;
+        _winAudioSource.spatialBlend = 0f;
+    }
+
+    void PlayLevelClearAudio()
+    {
+        EnsureWinAudioSource();
+        EnsureLevelClearClip();
+
+        if (_winAudioSource && levelClearClip)
+            _winAudioSource.PlayOneShot(levelClearClip, levelClearVolume);
     }
 
     void ApplyButtonTextPadding(Button button, Vector2 padding)
