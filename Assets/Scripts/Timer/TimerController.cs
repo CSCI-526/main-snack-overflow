@@ -49,6 +49,12 @@ public class TimerController : MonoBehaviour
     public string clockTickingResourcePath = "Audio/clocktickingsound";
     [Range(0f, 1.5f)] public float clockTickingVolume = 1f;
 
+    [Header("Game Over Audio")]
+    [SerializeField] AudioClip gameOverClip;
+    [Tooltip("Optional resource path override if the clip reference is missing.")]
+    public string gameOverClipResourcePath = "Audio/GameOverMusic";
+    [Range(0f, 1.5f)] public float gameOverVolume = 1f;
+
     [Header("Timer Background")]
     public Image timerBackground;
     public Color backgroundColor = new Color(0.2f, 0.45f, 0.9f, 0.95f);
@@ -86,6 +92,7 @@ bool _hasTimerBasePos;
 float _lastBackgroundSide;
     AudioSource _warningAudioSource;
     bool _warningActive;
+    AudioSource _gameOverAudioSource;
 
     const int TOP_SORT_ORDER = 5000;
     const int TIMER_SORT_ORDER = 4500;
@@ -313,6 +320,37 @@ float _lastBackgroundSide;
             clockTickingClip = Resources.Load<AudioClip>(clockTickingResourcePath);
     }
 
+    void EnsureGameOverClip()
+    {
+        if (gameOverClip)
+            return;
+
+        if (!string.IsNullOrEmpty(gameOverClipResourcePath))
+            gameOverClip = Resources.Load<AudioClip>(gameOverClipResourcePath);
+    }
+
+    void EnsureGameOverAudioSource()
+    {
+        if (_gameOverAudioSource)
+            return;
+
+        var go = new GameObject("TimerGameOverAudio");
+        go.transform.SetParent(transform, false);
+        _gameOverAudioSource = go.AddComponent<AudioSource>();
+        _gameOverAudioSource.playOnAwake = false;
+        _gameOverAudioSource.loop = false;
+        _gameOverAudioSource.spatialBlend = 0f;
+    }
+
+    void PlayGameOverAudio()
+    {
+        EnsureGameOverAudioSource();
+        EnsureGameOverClip();
+
+        if (_gameOverAudioSource && gameOverClip)
+            _gameOverAudioSource.PlayOneShot(gameOverClip, gameOverVolume);
+    }
+
     void EnsureTimerBackground()
     {
         if (!timerText)
@@ -481,6 +519,9 @@ float _lastBackgroundSide;
 
     void GameOver()
     {
+        if (isGameOver)
+            return;
+
         if (_rt) _rt.localScale = Vector3.one;
 
         isGameOver = true;
@@ -488,6 +529,7 @@ float _lastBackgroundSide;
         StopWarningAudio();
         _warningActive = false;
 
+        PlayGameOverAudio();
         
         TryFillGameOverScore();
 
