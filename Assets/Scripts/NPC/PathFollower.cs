@@ -131,6 +131,18 @@ public class PathFollower : MonoBehaviour
     public float groundProbeHeight = 4f;
     public float groundProbeDistance = 10f;
 
+    [Header("Collision Resolve")]
+    [Tooltip("Layers that should prevent an NPC from occupying a spot (houses, ponds, etc).")]
+    public LayerMask spawnBlockerMask = ~0;
+    [Range(0.3f, 3f)] public float collisionResolveRadius = 1.5f;
+    [Min(0.1f)] public float collisionResolveHeight = 0.6f;
+    [Range(3, 30)] public int collisionResolveAttempts = 15;
+    [Min(1)] public int collisionResolveRadiusExpansions = 2;
+
+    [Header("Player Avoidance")]
+    public Transform avoidTransform;
+    [Range(0.5f, 6f)] public float avoidRadius = 2f;
+
     Rigidbody rb;
     Vector3[] points;
     int idx;
@@ -229,9 +241,19 @@ public class PathFollower : MonoBehaviour
         if (hitGround) return;
 
         rb.velocity = Vector3.zero;
-        movingForward = !movingForward;
-        idx = movingForward ? 0 : points.Length - 1;
-        transform.position = points[idx];
+        if (TryResolveCollisionPosition(out var resolved))
+        {
+            transform.position = resolved;
+            SnapToNearestPoint();
+        }
+        else
+        {
+            movingForward = !movingForward;
+            idx = movingForward ? 0 : points.Length - 1;
+            transform.position = points[idx];
+        }
+
+        EnsureGrounded();
         pauseTimer = Random.Range(pauseRange.x, pauseRange.y);
     }
 
@@ -248,5 +270,58 @@ public class PathFollower : MonoBehaviour
             position.y = 0f;
         }
         return position;
+    }
+
+    void EnsureGrounded()
+    {
+        const int maxTries = 5;
+        for (int i = 0; i < maxTries; i++)
+        {
+            transform.position = ProjectToGround(transform.position);
+            if (transform.position.y <= 2f) break;
+            Vector3 jitter = new Vector3(Random.Range(-0.5f, 0.5f), 0f, Random.Range(-0.5f, 0.5f));
+            transform.position += jitter;
+        }
+        if (transform.position.y > 2f)
+            transform.position = new Vector3(transform.position.x, 0.1f, transform.position.z);
+    }
+
+    bool TryResolveCollisionPosition(out Vector3 resolved)
+    {
+        resolved = transform.position;
+        Vector3 start = transform.position;
+        float radius = Mathf.Max(0.2f, collisionResolveRadius);
+
+        for (int expansion = 0; expansion <= collisionResolveRadiusExpansions; expansion++)
+        {
+            for (int attempt = 0; attempt < collisionResolveAttempts; attempt++)
+            {
+                Vector2 dir2 = Random.insideUnitCircle;
+                if (dir2.sqrMagnitude < 0.0001f) continue;
+                dir2.Normalize();
+                Vector3 offset = new Vector3(dir2.x, 0f, dir2.y) * radius;
+                Vector3 candidate = start + offset;
+                candidate = ProjectToGround(candidate);
+
+                if (!IsPositionBlocked(candidate))
+                {
+                    resolved = candidate;
+                    return true;
+                }
+            }
+            radius *= 2f;
+        }
+
+        return false;
+    }
+
+    bool IsPositionBlocked(Vector3 candidate)
+    {
+        Vector3 bottom = candidate + Vector3.up * 0.1f;
+        Vector3 top = bottom + Vector3.up * Mathf.Max(0.1f, collisionResolveHeight);
+        if (avoidTransform && (candidate - avoidTransform.position).sqrMagnitude < avoidRadius * avoidRadius)
+            return true;
+
+        return Physics.CheckCapsule(bottom, top, collisionResolveRadius * 0.5f, spawnBlockerMask, QueryTriggerInteraction.Ignore);
     }
 }

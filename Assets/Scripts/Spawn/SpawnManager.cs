@@ -380,6 +380,7 @@ public class SpawnManager : MonoBehaviour
     int redFocusImpostorColorIdCache = -2;
     readonly List<NPCIdentity> spawnedImpostors = new List<NPCIdentity>();
     readonly List<NPCIdentity> spawnedCivilians = new List<NPCIdentity>();
+    PlayerMover cachedPlayer;
     Coroutine colorCycleRoutine;
     float currentColorCycleShiftSeconds = LevelTwoColorShiftSeconds;
 
@@ -391,10 +392,18 @@ public class SpawnManager : MonoBehaviour
     const int maxAttemptsPerIteration = 50;     // was 24
     const float defaultPathScale = 0.55f;
 
-    [Header("Grounding (for impostor starts)")]
+    [Header("Grounding / Spawn Safety")]
     public LayerMask groundMask = ~0;
     public float groundProbeHeight = 4f;
     public float groundProbeDistance = 12f;
+    [Tooltip("Which layers should block NPC spawning (houses, rocks, props). Exclude the ground layer.")]
+    public LayerMask spawnBlockerMask = ~0;
+    [Range(0.3f, 1.5f)] public float spawnCheckRadius = 0.6f;
+    [Range(0.5f, 3f)] public float spawnCheckHeight = 1.6f;
+    [Min(1)] public int spawnMaxAttempts = 40;
+
+    [Header("NPC Collision Avoidance")]
+    [Range(0.5f, 6f)] public float playerAvoidRadius = 2.5f;
 
     // -----------------------------
     // Delayed spawn (called after memory phase)
@@ -417,7 +426,7 @@ public class SpawnManager : MonoBehaviour
 
     void SpawnPlayer()
     {
-        SpawnPlayerInternal(true);
+        cachedPlayer = SpawnPlayerInternal(true);
     }
 
     void OnDisable()
@@ -445,6 +454,14 @@ public class SpawnManager : MonoBehaviour
             // Assign PathFollower to follow this path
             var follower = npc.AddComponent<PathFollower>();
             follower.pathShape = path;
+            follower.spawnBlockerMask = spawnBlockerMask;
+            follower.collisionResolveRadius = spawnCheckRadius;
+            follower.collisionResolveHeight = spawnCheckHeight;
+            if (cachedPlayer != null)
+            {
+                follower.avoidTransform = cachedPlayer.transform;
+                follower.avoidRadius = playerAvoidRadius;
+            }
 
             // Apply civilian identity (false = not impostor)
             var identity = ApplyNPCIdentity(npc, false, shapeType, colorId);
@@ -489,6 +506,14 @@ public class SpawnManager : MonoBehaviour
             // Make impostor follow its unique path
             var follower = npc.AddComponent<PathFollower>();
             follower.pathShape = path;
+            follower.spawnBlockerMask = spawnBlockerMask;
+            follower.collisionResolveRadius = spawnCheckRadius;
+            follower.collisionResolveHeight = spawnCheckHeight;
+            if (cachedPlayer != null)
+            {
+                follower.avoidTransform = cachedPlayer.transform;
+                follower.avoidRadius = playerAvoidRadius;
+            }
         }
     }
 
@@ -825,32 +850,39 @@ public class SpawnManager : MonoBehaviour
     }
 
     Vector3 GetRandomPointInMovementBounds()
-{
-    if (movementBounds == null)
     {
-        Debug.LogError("MovementBounds not assigned on SpawnManager!");
-        return Vector3.zero;
+        if (movementBounds == null)
+        {
+            Debug.LogError("MovementBounds not assigned on SpawnManager!");
+            return Vector3.zero;
+        }
+
+        for (int attempt = 0; attempt < spawnMaxAttempts; attempt++)
+        {
+            Vector3 worldPoint = SampleBoundsPoint();
+            worldPoint = ProjectToGround(worldPoint);
+
+            if (IsSpawnAreaClear(worldPoint))
+                return worldPoint;
+        }
+
+        Debug.LogWarning("[SpawnManager] Failed to find a clear spawn point; falling back to bounds center.");
+        return ProjectToGround(movementBounds.bounds.center);
     }
 
-    BoxCollider box = movementBounds;
+    Vector3 SampleBoundsPoint()
+    {
+        BoxCollider box = movementBounds;
+        float concentrationFactor = 0.5f;
 
-    float concentrationFactor = 0.5f;
+        Vector3 localPoint = new Vector3(
+            Random.Range(-0.5f, 0.5f) * box.size.x * concentrationFactor,
+            Random.Range(-0.5f, 0.5f) * box.size.y * concentrationFactor,
+            0f
+        );
 
-    Vector3 localPoint = new Vector3(
-        Random.Range(-0.5f, 0.5f) * box.size.x * concentrationFactor,
-        Random.Range(-0.5f, 0.5f) * box.size.y * concentrationFactor,
-        0f // thin axis since map is rotated -90° on X
-    );
-
-    // Convert to world coordinates
-    Vector3 worldPoint = box.transform.TransformPoint(box.center + localPoint);
-
-    // Project to ground (optional but helps with terrain unevenness)
-    worldPoint = ProjectToGround(worldPoint);
-
-    Debug.Log($"Spawned at: {worldPoint}");
-    return worldPoint;
-}
+        return box.transform.TransformPoint(box.center + localPoint);
+    }
 
     // Teammate's grounding helper for placing impostors on terrain/meshes
     Vector3 ProjectToGround(Vector3 position)
@@ -867,6 +899,13 @@ public class SpawnManager : MonoBehaviour
             position.y = 0f;
         }
         return position;
+    }
+
+    bool IsSpawnAreaClear(Vector3 position)
+    {
+        Vector3 bottom = position + Vector3.up * 0.2f;
+        Vector3 top = bottom + Vector3.up * Mathf.Max(0.1f, spawnCheckHeight);
+        return !Physics.CheckCapsule(bottom, top, spawnCheckRadius, spawnBlockerMask, QueryTriggerInteraction.Ignore);
     }
 
     PathShape CreateRuntimePath(PathShape.ShapeType shapeType, Vector3 center)

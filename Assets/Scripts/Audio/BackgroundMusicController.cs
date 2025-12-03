@@ -13,14 +13,14 @@ public class BackgroundMusicController : MonoBehaviour
     [Tooltip("Scene names where this music should play.")]
     public string[] scenesUsingClip = { "Landing", "Home", "LvL1", "LvL2" };
 
-    [Range(0f, 1f)] public float volume = 0.5f;
+    [Range(0f, 1f)] public float volume = 1f;
     public bool loop = true;
 
     [System.Serializable]
     public class SceneMusicOverride
     {
         public string clipResourcePath = "Audio/BackgroundMusic";
-        [Range(0f, 1f)] public float volume = 0.5f;
+        [Range(0f, 1f)] public float volume = 1f;
         public bool loop = true;
         [Tooltip("Optional offset in seconds to skip the beginning of the clip.")]
         public float startTimeSeconds = 0f;
@@ -84,7 +84,8 @@ public class BackgroundMusicController : MonoBehaviour
         if (clipChanged)
             audioSource.clip = clip;
 
-        audioSource.volume = config.volume;
+        float targetVolume = Mathf.Max(config.volume, volume);
+        audioSource.volume = Mathf.Clamp01(targetVolume);
         audioSource.loop = config.loop;
 
         if (clipChanged || !audioSource.isPlaying)
