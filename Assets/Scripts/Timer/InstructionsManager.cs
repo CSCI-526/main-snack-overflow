@@ -265,6 +265,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class InstructionsManager : MonoBehaviour
 {
@@ -277,6 +278,15 @@ public class InstructionsManager : MonoBehaviour
     [Header("Vision Mask")]
     public GameObject visionMask;   // assign VisionMask GO in Inspector
 
+    [Header("Level 1 Override")]
+    [SerializeField] bool overrideLevel1Instructions = true;
+    [SerializeField] string level1InstructionText = "Find  x10.";
+    [SerializeField] Image level1ImpostorCapsule;
+    [SerializeField] RectTransform level1CapsuleParent;
+    [SerializeField] Vector2 level1CapsuleSize = new Vector2(60f, 120f);
+    [SerializeField] Vector2 level1CapsuleOffset = new Vector2(0f, 18f);
+    [SerializeField] Color level1CapsuleColor = new Color32(255, 0, 0, 255);
+    [SerializeField] Sprite level1CapsuleSprite;
 
     [TextArea(3, 10)]
     public string fullText =
@@ -307,6 +317,7 @@ public class InstructionsManager : MonoBehaviour
         gameplayUiEnabled = false;
 
         instructionsPanel.SetActive(true);
+        ApplyLevel1InstructionsIfNeeded();
 
         SetVisionMaskActive(false);
         EnableGameplayUI(false);
@@ -344,6 +355,7 @@ public class InstructionsManager : MonoBehaviour
 
     public IEnumerator TypeText()
     {
+        ApplyLevel1InstructionsIfNeeded();
         instructionsText.text = "";
         if (skipButton) skipButton.gameObject.SetActive(true);
 
@@ -457,6 +469,152 @@ public class InstructionsManager : MonoBehaviour
             cachedSpawner = FindObjectOfType<SpawnManager>();
         return cachedSpawner;
     }
+
+    void ApplyLevel1InstructionsIfNeeded()
+    {
+        if (!overrideLevel1Instructions)
+            return;
+
+        bool isLevelOne = IsLevelOneScene();
+        if (isLevelOne)
+        {
+            fullText = string.IsNullOrWhiteSpace(level1InstructionText)
+                ? "Find  x10."
+                : level1InstructionText.Trim();
+
+            var capsule = EnsureLevel1CapsulePreview();
+            if (capsule)
+            {
+                capsule.color = level1CapsuleColor;
+                capsule.rectTransform.sizeDelta = level1CapsuleSize;
+                capsule.rectTransform.anchoredPosition = level1CapsuleOffset;
+                capsule.gameObject.SetActive(true);
+            }
+        }
+        else
+        {
+            SetLevel1PreviewVisible(false);
+        }
+    }
+
+    Image EnsureLevel1CapsulePreview()
+    {
+        if (level1ImpostorCapsule)
+            return level1ImpostorCapsule;
+
+        RectTransform parent =
+            level1CapsuleParent ? level1CapsuleParent :
+            instructionsText ? instructionsText.rectTransform :
+            instructionsPanel ? instructionsPanel.transform as RectTransform : null;
+
+        if (!parent)
+            return null;
+
+        var go = new GameObject("Level1ImpostorCapsule", typeof(RectTransform), typeof(Image));
+        var rect = go.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = level1CapsuleSize;
+        rect.anchoredPosition = level1CapsuleOffset;
+
+        var img = go.GetComponent<Image>();
+        img.sprite = GetLevel1CapsuleSprite();
+        img.type = Image.Type.Simple;
+        img.preserveAspect = true;
+        img.raycastTarget = false;
+
+        level1ImpostorCapsule = img;
+        return img;
+    }
+
+    void SetLevel1PreviewVisible(bool visible)
+    {
+        if (level1ImpostorCapsule)
+            level1ImpostorCapsule.gameObject.SetActive(visible);
+    }
+
+    Sprite GetLevel1CapsuleSprite()
+    {
+        if (level1CapsuleSprite)
+            return level1CapsuleSprite;
+
+        if (cachedCapsuleSprite)
+            return cachedCapsuleSprite;
+
+        const int width = 96;
+        const int height = 192;
+        var tex = new Texture2D(width, height, TextureFormat.RGBA32, false)
+        {
+            name = "Level1CapsuleTexture",
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp,
+            hideFlags = HideFlags.HideAndDontSave
+        };
+
+        var pixels = new Color32[width * height];
+        float halfWidth = 0.5f;
+        float bodyHalfHeight = 0.35f;
+        float capHeight = 0.5f - bodyHalfHeight;
+        float edgeFeather = 0.08f;
+
+        for (int y = 0; y < height; y++)
+        {
+            float v = (y + 0.5f) / height;
+            float centeredY = (v - 0.5f);
+            float absY = Mathf.Abs(centeredY);
+            float horizontalLimit;
+
+            if (absY <= bodyHalfHeight)
+            {
+                horizontalLimit = halfWidth;
+            }
+            else
+            {
+                float capT = (absY - bodyHalfHeight) / capHeight;
+                if (capT > 1f)
+                    continue;
+                horizontalLimit = Mathf.Sqrt(Mathf.Clamp01(1f - capT * capT)) * halfWidth;
+            }
+
+            for (int x = 0; x < width; x++)
+            {
+                float u = (x + 0.5f) / width;
+                float centeredX = Mathf.Abs(u - 0.5f);
+
+                float norm = centeredX / halfWidth;
+                if (norm > 1f)
+                    continue;
+
+                float edgeDistance = (horizontalLimit / halfWidth) - norm;
+                float alpha = Mathf.Clamp01(edgeDistance / edgeFeather);
+                if (alpha <= 0f)
+                    continue;
+
+                float shading = 0.55f + 0.45f * (1f - Mathf.Pow(centeredX / horizontalLimit, 2f));
+                byte shade = (byte)Mathf.Clamp(Mathf.RoundToInt(shading * 255f), 0, 255);
+                var c = new Color32(shade, shade, shade, (byte)Mathf.Clamp(Mathf.RoundToInt(alpha * 255f), 0, 255));
+                pixels[y * width + x] = c;
+            }
+        }
+
+        tex.SetPixels32(pixels);
+        tex.Apply();
+
+        cachedCapsuleSprite = Sprite.Create(tex, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), width);
+        cachedCapsuleSprite.name = "Level1CapsuleSprite";
+        cachedCapsuleSprite.hideFlags = HideFlags.HideAndDontSave;
+        return cachedCapsuleSprite;
+    }
+
+    static bool IsLevelOneScene()
+    {
+        var scene = SceneManager.GetActiveScene();
+        return scene.IsValid() && scene.name == "LvL1";
+    }
+
+    static Sprite cachedCapsuleSprite;
 }
 
 
