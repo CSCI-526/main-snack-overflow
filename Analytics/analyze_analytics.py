@@ -202,31 +202,63 @@ def plot_asr_density(df: pd.DataFrame, out_dir: Path):
 
 def plot_rl_histogram(df: pd.DataFrame, out_dir: Path):
     """
-    RL: histogram of reaction latency with mean/median lines.
+    RL: histograms of reaction latency (clamped) with mean/median lines,
+    saved as one image per level.
+
+    Output files:
+        metric_RL_level_<level_id>.png  (e.g., metric_RL_level_1.png)
     """
-    path = out_dir / "metric_RL_hist.png"
-    data = df["RL_s_clamped"].dropna()
-    if data.empty:
-        placeholder_plot("Reaction Latency (Histogram)", path)
+    sub = df[["level_id", "RL_s_clamped"]].dropna()
+
+    # If there's no RL data at all, just make a single placeholder
+    if sub.empty:
+        placeholder_plot("Reaction Latency (Per Level)", out_dir / "metric_RL_per_level_placeholder.png")
         return
 
-    mean_val = data.mean()
-    median_val = data.median()
+    levels = sorted(sub["level_id"].unique(), key=lambda x: str(x))
 
-    plt.figure(figsize=(7, 4))
-    plt.hist(data, bins=20, alpha=0.7, edgecolor="black")
-    plt.xlabel("Reaction Latency (s, clamped at 30)")
-    plt.ylabel("Count")
-    plt.title("Distribution of Reaction Latency")
+    for lvl in levels:
+        level_data = sub.loc[sub["level_id"] == lvl, "RL_s_clamped"].dropna()
 
-    # Reference lines
-    plt.axvline(mean_val, color=COLORS["red"], linestyle="--", linewidth=1.2, label=f"Mean = {mean_val:.2f}s")
-    plt.axvline(median_val, color=COLORS["green"], linestyle="-.", linewidth=1.2, label=f"Median = {median_val:.2f}s")
+        # If somehow this level has no data after filtering, make a placeholder just for it
+        if level_data.empty:
+            placeholder_plot(
+                f"Reaction Latency – Level {lvl}",
+                out_dir / f"metric_RL_level_{lvl}.png",
+            )
+            continue
 
-    plt.legend()
-    plt.tight_layout(rect=[0.05, 0.05, 0.95, 0.95])
-    plt.savefig(path)
-    plt.close()
+        mean_val = level_data.mean()
+        median_val = level_data.median()
+
+        plt.figure(figsize=(7, 4))
+        plt.hist(level_data, bins=20, alpha=0.7, edgecolor="black")
+        plt.xlabel("Reaction Latency (s, clamped at 30)")
+        plt.ylabel("Count")
+        plt.title(f"Distribution of Reaction Latency – Level {lvl}")
+
+        # Reference lines
+        plt.axvline(
+            mean_val,
+            color=COLORS["red"],
+            linestyle="--",
+            linewidth=1.2,
+            label=f"Mean = {mean_val:.2f}s",
+        )
+        plt.axvline(
+            median_val,
+            color=COLORS["green"],
+            linestyle="-.",
+            linewidth=1.2,
+            label=f"Median = {median_val:.2f}s",
+        )
+
+        plt.legend()
+        plt.tight_layout(rect=[0.05, 0.05, 0.95, 0.95])
+
+        out_path = out_dir / f"metric_RL_level_{lvl}.png"
+        plt.savefig(out_path)
+        plt.close()
 
 
 # -------------------- Retry Motivation Index (RMI) --------------------

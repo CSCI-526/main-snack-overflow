@@ -1,5 +1,5 @@
-Rows after cleaning: 115
-Unique sessions: 54
+Rows after cleaning: 616
+Unique sessions: 270
 Levels: LvL1, LvL2, LvL3, LvL4
-Corr(ASR, DAR): 0.251
-Corr(RL_s, DAR): -0.088
+Corr(ASR, DAR): 0.411
+Corr(RL_s, DAR): 0.090
