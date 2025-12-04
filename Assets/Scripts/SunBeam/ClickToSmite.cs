@@ -177,7 +177,14 @@ public class ClickToSmite : MonoBehaviour
 
         // Notify that an impostor was killed
         if (!SuppressGameState && id != null && id.isImpostor)
+        {
             ImpostorTracker.Instance?.OnImpostorKilled();
+
+            // Also let the hint arrow know this impostor was found
+            if (ImpostorHintArrow.Instance != null)
+                ImpostorHintArrow.Instance.NotifyImpostorKilled(id);
+        }
+
 
         // Beam + delete NPC
         SunbeamManager.Instance.Smite(death);
