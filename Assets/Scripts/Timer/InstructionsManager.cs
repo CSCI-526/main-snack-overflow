@@ -280,13 +280,30 @@ public class InstructionsManager : MonoBehaviour
 
     [Header("Level 1 Override")]
     [SerializeField] bool overrideLevel1Instructions = true;
-    [SerializeField] string level1InstructionText = "Find  x10.";
+    [SerializeField] string level1InstructionText = "Find the red impostor capsule x10.";
     [SerializeField] Image level1ImpostorCapsule;
     [SerializeField] RectTransform level1CapsuleParent;
+    [SerializeField] Vector2 level1CapsuleAnchor = new Vector2(0.5f, 0.5f);
     [SerializeField] Vector2 level1CapsuleSize = new Vector2(60f, 120f);
     [SerializeField] Vector2 level1CapsuleOffset = new Vector2(0f, 18f);
     [SerializeField] Color level1CapsuleColor = new Color32(255, 0, 0, 255);
     [SerializeField] Sprite level1CapsuleSprite;
+
+    [Header("Level 2 Override")]
+    [SerializeField] bool overrideLevel2Instructions = true;
+    [SerializeField] string level2InstructionText = "Keep an eye out for impostors. Watch the capsule change colors.";
+    [SerializeField] Image level2ImpostorCapsule;
+    [SerializeField] RectTransform level2CapsuleParent;
+    [SerializeField] Vector2 level2CapsuleAnchor = new Vector2(0.5f, 0.5f);
+    [SerializeField] Vector2 level2CapsuleSize = new Vector2(60f, 120f);
+    [SerializeField] Vector2 level2CapsuleOffset = new Vector2(0f, 18f);
+    [SerializeField] Color[] level2CycleColors = {
+        new Color32(255, 0, 0, 255),
+        new Color32(0, 160, 255, 255),
+        new Color32(90, 200, 90, 255),
+        new Color32(240, 200, 20, 255)
+    };
+    [Range(0.2f, 8f)] [SerializeField] float level2ColorCycleDuration = 1.8f;
 
     [TextArea(3, 10)]
     public string fullText =
@@ -307,6 +324,7 @@ public class InstructionsManager : MonoBehaviour
     bool spawnTriggered;
     bool gameplayUiEnabled;
     SpawnManager cachedSpawner;
+    Coroutine level2CycleRoutine;
 
     void Start()
     {
@@ -317,7 +335,7 @@ public class InstructionsManager : MonoBehaviour
         gameplayUiEnabled = false;
 
         instructionsPanel.SetActive(true);
-        ApplyLevel1InstructionsIfNeeded();
+        ApplyLevelSpecificInstructions();
 
         SetVisionMaskActive(false);
         EnableGameplayUI(false);
@@ -355,7 +373,7 @@ public class InstructionsManager : MonoBehaviour
 
     public IEnumerator TypeText()
     {
-        ApplyLevel1InstructionsIfNeeded();
+        ApplyLevelSpecificInstructions();
         instructionsText.text = "";
         if (skipButton) skipButton.gameObject.SetActive(true);
 
@@ -376,6 +394,7 @@ public class InstructionsManager : MonoBehaviour
     {
         instructionsPanel.SetActive(false);
         if (skipButton) skipButton.gameObject.SetActive(false);
+        StopLevel2Cycle();
 
         var tutorial = FindObjectOfType<Level1TutorialController>(true);
         if (tutorial != null && tutorial.isActiveAndEnabled && tutorial.TryBeginTutorial(this))
@@ -399,6 +418,7 @@ public class InstructionsManager : MonoBehaviour
         StopAllCoroutines();
         instructionsPanel.SetActive(false);
         if (skipButton) skipButton.gameObject.SetActive(false);
+        StopLevel2Cycle();
 
         StartGameplayNow(true);
     }
@@ -470,31 +490,66 @@ public class InstructionsManager : MonoBehaviour
         return cachedSpawner;
     }
 
-    void ApplyLevel1InstructionsIfNeeded()
+    void ApplyLevelSpecificInstructions()
     {
-        if (!overrideLevel1Instructions)
-            return;
+        bool handledLevel1 = ApplyLevel1Instructions();
+        bool handledLevel2 = ApplyLevel2Instructions();
 
-        bool isLevelOne = IsLevelOneScene();
-        if (isLevelOne)
-        {
-            fullText = string.IsNullOrWhiteSpace(level1InstructionText)
-                ? "Find  x10."
-                : level1InstructionText.Trim();
-
-            var capsule = EnsureLevel1CapsulePreview();
-            if (capsule)
-            {
-                capsule.color = level1CapsuleColor;
-                capsule.rectTransform.sizeDelta = level1CapsuleSize;
-                capsule.rectTransform.anchoredPosition = level1CapsuleOffset;
-                capsule.gameObject.SetActive(true);
-            }
-        }
-        else
+        if (!handledLevel1 && !handledLevel2)
         {
             SetLevel1PreviewVisible(false);
+            SetLevel2PreviewVisible(false);
+            StopLevel2Cycle();
         }
+    }
+
+    bool ApplyLevel1Instructions()
+    {
+        if (!overrideLevel1Instructions || !IsLevelOneScene())
+            return false;
+
+        fullText = string.IsNullOrWhiteSpace(level1InstructionText)
+            ? "Find the red impostor capsule x10."
+            : level1InstructionText.Trim();
+
+        var capsule = EnsureLevel1CapsulePreview();
+        if (capsule)
+        {
+            capsule.color = level1CapsuleColor;
+            capsule.rectTransform.anchorMin = level1CapsuleAnchor;
+            capsule.rectTransform.anchorMax = level1CapsuleAnchor;
+            capsule.rectTransform.sizeDelta = level1CapsuleSize;
+            capsule.rectTransform.anchoredPosition = level1CapsuleOffset;
+            capsule.gameObject.SetActive(true);
+        }
+
+        SetLevel2PreviewVisible(false);
+        StopLevel2Cycle();
+        return true;
+    }
+
+    bool ApplyLevel2Instructions()
+    {
+        if (!overrideLevel2Instructions || !IsLevelTwoScene())
+            return false;
+
+        fullText = string.IsNullOrWhiteSpace(level2InstructionText)
+            ? "Keep an eye out for impostors. Watch the capsule change colors."
+            : level2InstructionText.Trim();
+
+        var capsule = EnsureLevel2CapsulePreview();
+        if (capsule)
+        {
+            capsule.rectTransform.anchorMin = level2CapsuleAnchor;
+            capsule.rectTransform.anchorMax = level2CapsuleAnchor;
+            capsule.rectTransform.sizeDelta = level2CapsuleSize;
+            capsule.rectTransform.anchoredPosition = level2CapsuleOffset;
+            capsule.gameObject.SetActive(true);
+            BeginLevel2Cycle(capsule);
+        }
+
+        SetLevel1PreviewVisible(false);
+        return true;
     }
 
     Image EnsureLevel1CapsulePreview()
@@ -513,8 +568,8 @@ public class InstructionsManager : MonoBehaviour
         var go = new GameObject("Level1ImpostorCapsule", typeof(RectTransform), typeof(Image));
         var rect = go.GetComponent<RectTransform>();
         rect.SetParent(parent, false);
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.anchorMin = level1CapsuleAnchor;
+        rect.anchorMax = level1CapsuleAnchor;
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = level1CapsuleSize;
         rect.anchoredPosition = level1CapsuleOffset;
@@ -533,6 +588,93 @@ public class InstructionsManager : MonoBehaviour
     {
         if (level1ImpostorCapsule)
             level1ImpostorCapsule.gameObject.SetActive(visible);
+    }
+
+    Image EnsureLevel2CapsulePreview()
+    {
+        if (level2ImpostorCapsule)
+            return level2ImpostorCapsule;
+
+        RectTransform parent =
+            level2CapsuleParent ? level2CapsuleParent :
+            instructionsText ? instructionsText.rectTransform :
+            instructionsPanel ? instructionsPanel.transform as RectTransform : null;
+
+        if (!parent)
+            return null;
+
+        var go = new GameObject("Level2ImpostorCapsule", typeof(RectTransform), typeof(Image));
+        var rect = go.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = level2CapsuleAnchor;
+        rect.anchorMax = level2CapsuleAnchor;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = level2CapsuleSize;
+        rect.anchoredPosition = level2CapsuleOffset;
+
+        var img = go.GetComponent<Image>();
+        img.sprite = GetLevel1CapsuleSprite(); // reuse the generated capsule sprite
+        img.type = Image.Type.Simple;
+        img.preserveAspect = true;
+        img.raycastTarget = false;
+
+        level2ImpostorCapsule = img;
+        return img;
+    }
+
+    void SetLevel2PreviewVisible(bool visible)
+    {
+        if (level2ImpostorCapsule)
+            level2ImpostorCapsule.gameObject.SetActive(visible);
+    }
+
+    void BeginLevel2Cycle(Image capsule)
+    {
+        StopLevel2Cycle();
+        if (!capsule)
+            return;
+
+        var colors = (level2CycleColors != null && level2CycleColors.Length > 0)
+            ? level2CycleColors
+            : new[] { Color.red, Color.yellow };
+
+        capsule.color = colors[0];
+        level2CycleRoutine = StartCoroutine(Level2ColorCycle(capsule, colors, level2ColorCycleDuration));
+    }
+
+    void StopLevel2Cycle()
+    {
+        if (level2CycleRoutine != null)
+        {
+            StopCoroutine(level2CycleRoutine);
+            level2CycleRoutine = null;
+        }
+    }
+
+    IEnumerator Level2ColorCycle(Image capsule, Color[] colors, float duration)
+    {
+        if (capsule == null || colors == null || colors.Length == 0)
+            yield break;
+
+        int count = colors.Length;
+        int index = 0;
+
+        while (true)
+        {
+            int nextIndex = (index + 1) % count;
+            Color startColor = colors[index];
+            Color endColor = colors[nextIndex];
+
+            float t = 0f;
+            while (t < 1f)
+            {
+                capsule.color = Color.Lerp(startColor, endColor, t);
+                t += Time.unscaledDeltaTime / Mathf.Max(0.01f, duration);
+                yield return null;
+            }
+
+            index = nextIndex;
+        }
     }
 
     Sprite GetLevel1CapsuleSprite()
@@ -612,6 +754,12 @@ public class InstructionsManager : MonoBehaviour
     {
         var scene = SceneManager.GetActiveScene();
         return scene.IsValid() && scene.name == "LvL1";
+    }
+
+    static bool IsLevelTwoScene()
+    {
+        var scene = SceneManager.GetActiveScene();
+        return scene.IsValid() && scene.name == "LvL2";
     }
 
     static Sprite cachedCapsuleSprite;
