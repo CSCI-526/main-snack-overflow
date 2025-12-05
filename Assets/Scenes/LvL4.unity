@@ -2627,7 +2627,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &136595507
@@ -4174,7 +4174,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &216788970
@@ -4295,7 +4295,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &227824963
@@ -4555,7 +4555,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &233013449
@@ -4759,7 +4759,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &238359062
@@ -5664,7 +5664,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &298498243
@@ -5785,7 +5785,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &299316044
@@ -7963,7 +7963,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &407612089
@@ -8673,7 +8673,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &446134046
@@ -9275,7 +9275,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &461847789
@@ -10723,7 +10723,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &496533087
@@ -13496,7 +13496,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &639942209
@@ -16951,7 +16951,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &905794519
@@ -19941,7 +19941,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1053143524
@@ -22212,7 +22212,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1151224114
@@ -23688,7 +23688,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1253456682
@@ -26814,7 +26814,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1390359178
@@ -28023,7 +28023,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1460583826
@@ -30931,7 +30931,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1583100722
@@ -34175,7 +34175,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1717468930
@@ -34689,7 +34689,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1752442609
@@ -36825,7 +36825,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1837608644
@@ -39340,7 +39340,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1b37b10d71e24366a6bb9c312b2af2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 5
+  stunDuration: 3
   stuckSound: {fileID: 0}
   stuckSoundVolume: 1.35
 --- !u!23 &1979727830

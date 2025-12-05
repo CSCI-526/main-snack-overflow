@@ -2,6 +2,10 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public static class HazardHintManager {
+    const string LevelTwoSceneName = "LvL2";
+    const string LevelThreeSceneName = "LvL3";
+    const string LevelFourSceneName = "LvL4";
+
     static bool initialized;
     static float nextMudHintTime;
     static float nextPotholeHintTime;
@@ -19,7 +23,7 @@ public static class HazardHintManager {
 
     public static void TryShowMudHint() {
         EnsureInitialized();
-        if (!IsLevelTwo())
+        if (!IsHazardHintLevel())
             return;
         const float cooldown = 4f;
         if (Time.unscaledTime < nextMudHintTime)
@@ -30,17 +34,19 @@ public static class HazardHintManager {
 
     public static void TryShowPotholeHint(float duration) {
         EnsureInitialized();
-        if (!IsLevelTwo())
+        if (!IsHazardHintLevel())
             return;
         const float cooldown = 6f;
         if (Time.unscaledTime < nextPotholeHintTime)
             return;
         nextPotholeHintTime = Time.unscaledTime + cooldown;
-        string seconds = duration % 1f == 0f
-            ? Mathf.RoundToInt(duration).ToString()
-            : duration.ToString("0.0");
-        KillTextController.Instance?.ShowHazard($"Ouch! Straight into a pothole!\nRecovering in {seconds}s!");
+        KillTextController.Instance?.ShowHazard("Ouch! Straight into a pothole!\nTimeout: 3 seconds!");
     }
 
-    static bool IsLevelTwo() => SceneManager.GetActiveScene().name == "LvL2";
+    static bool IsHazardHintLevel() {
+        string sceneName = SceneManager.GetActiveScene().name;
+        return sceneName == LevelTwoSceneName
+            || sceneName == LevelThreeSceneName
+            || sceneName == LevelFourSceneName;
+    }
 }
